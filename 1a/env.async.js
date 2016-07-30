@@ -11,7 +11,7 @@
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
-  // dependency: setTimeout
+  // dependencies: setTimeout, clearTimeout
   // optional dependency: Promise
   // provides: env.setTimeout, env.clearTimeout, env.setImmediate,
   //           env.{,new}Promise, env.{,new}Deferred
