@@ -12,6 +12,25 @@
       http://www.wtfpl.net/ for more details. */
 
   // dependencies: encodeURI, decodeURI, encodeURIComponent, decodeURIComponent
+  // provides: env.ipv6StringRegExp,
+  //           env.ipv4StringRegExp,
+  //           env.decimalByteStringRegExp,
+  //           env.urlProtocolStringRegExp,
+  //           env.urlUserPasswordCharsetStringRegExp,
+  //           env.urlDomainStringRegExp,
+  //           env.urlPortStringRegExp,
+  //           env.urlHostNameStringRegExp,
+  //           env.urlPathNameCharsetStringRegExp,
+  //           env.urlQueryCharsetStringRegExp,
+  //           env.urlHashCharsetStringRegExp,
+  //           env.urlParserRegExp,
+  //           env.urlSearchRegExp,
+  //
+  //           env.parseUrl,
+  //           env.makeUrl,
+  //           env.normalizeUrlPathname,
+  //           env.resolveUrlPathname,
+  //           env.resolveUrl
 
   env.registerLib(envUri);
 
