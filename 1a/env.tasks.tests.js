@@ -2,9 +2,7 @@
 (function (env) {
   "use strict";
 
-  /*! Version 1.0.0
-
-      Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
+  /*! Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
       the extent permitted by applicable law. You can redistribute it
       and/or modify it under the terms of the Do What The Fuck You Want
@@ -17,19 +15,14 @@
   function test(name, timeout, expected, testFn) {
     var res = [], timer;
     function end() {
-      if (timer === undefined) {
-        error("test: " + name);
-        return error("`end` called twice");
-      }
+      if (timer === undefined) return error("test: " + name + ", `end` called twice");
       timer = clearTimeout(timer);
       if (JSON.stringify(res) !== JSON.stringify(expected)) {
-        error("test: " + name);
-        error("result `" + JSON.stringify(res) + "` !== `" + JSON.stringify(expected) + "` expected");
+        error("test: " + name + ", result `" + JSON.stringify(res) + "` !== `" + JSON.stringify(expected) + "` expected");
       }
     }
     timer = setTimeout(function () {
-      error("test: " + name);
-      error("timeout ! result `" + JSON.stringify(res) + "` <-> `" + JSON.stringify(expected) + "` expected");
+      error("test: " + name + ", timeout ! result `" + JSON.stringify(res) + "` <-> `" + JSON.stringify(expected) + "` expected");
     }, timeout);
     setTimeout(function () { testFn(res, end); });
   }
