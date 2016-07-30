@@ -8,9 +8,10 @@
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
-  // dependency: env.Promise, env.newDeferred, env.Task, env.QuickTask,
-  //             env.formatStringFromDict,
-  //             env.randomBytes
+  // dependencies: async (env.Promise, env.newDeferred),
+  //               tasks (env.Task, env.QuickTask),
+  //               string-helpers (env.formatStringFromDict),
+  //               crypto-helpers (env.randomBytes)
 
   env.registerLib(envFsHelpers);
 
