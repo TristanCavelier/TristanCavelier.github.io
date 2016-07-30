@@ -11,26 +11,26 @@
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
+  // provides: env.registerLib, env.getRegisteredLib, env.toScript, env.copyEnv, env.newEnv
+
   var env = {}, registeredLib = [];
-  if (typeof exportKey !== "string") { exportKey = "env"; }
-  if (typeof exportRoot === "object" && exportRoot !== null) { exportRoot[exportKey] = env; }
+  if (typeof exportKey !== "string") exportKey = "env";
+  if (typeof exportRoot === "object" && exportRoot !== null) exportRoot[exportKey] = env;
 
   env.registerLib = function (lib) {
-    if (typeof lib !== "function") { throw new Error("lib is not a function"); }
+    if (typeof lib !== "function") throw new Error("lib is not a function");
     registeredLib.push(lib);
   };
   env.getRegisteredLib = function () { return registeredLib.slice(); };
   env.toScript = function () {
     var i, l = registeredLib.length, a = new Array(l + 1);
     a[0] = "(" + envExporter.toString() + "(this));"
-    for (i = 0; i < l; i += 1) {
-      a[i + 1] = "(" + registeredLib[i].toString() + "(env));"
-    }
+    for (i = 0; i < l; i += 1) a[i + 1] = "(" + registeredLib[i].toString() + "(env));"
     return a.join("\n") + "\n";
   };
   env.copyEnv = function () {
     var newEnv = envExporter(), l = registeredLib.length, i;
-    for (i = 0; i < l; i += 1) { registeredLib[i](newEnv); }
+    for (i = 0; i < l; i += 1) registeredLib[i](newEnv);
     return newEnv;
   };
   env.newEnv = function () { return envExporter(); };
