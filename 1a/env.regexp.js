@@ -11,9 +11,13 @@
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
+  // provides: env.selectString, env.partitionString, env.partitionStringToObject,
+  //           env.escapeRegExp,
+  //           env.parseRegExpToStrings, env.parseStringifiedRegExp
+
   env.registerLib(envRegExp);
 
-  env.select = function (text, matcher) {  // slower than partition Oo' // XXX rename selectString
+  env.selectString = function (text, matcher) {  // slower than partitionString Oo'
     // select("a b c b a", /a/g) -> [0,1,8,9]
     var selections = [];
     text.replace(matcher, function (match) {
@@ -23,7 +27,7 @@
     return selections;
   };
 
-  env.partition = function (text, separator) {  // XXX rename partitionString
+  env.partitionString = function (text, separator) {
     // partition("a b c b a", /a/g) -> ["", "a", " b c b ", "a", ""]
     var result = [], lastIndex = 0;
     text.replace(separator, function (match) {
@@ -37,7 +41,7 @@
     return result;
   };
 
-  env.partitionToObject = function (text, separator) {  // XXX rename partitionStringToObject
+  env.partitionStringToObject = function (text, separator) {
     // partition("a b c b a", /(a)/g) -> [
     //   {"type": "component", "0": ""},
     //   {"type": "separator", "0": "a", "1": "a"},

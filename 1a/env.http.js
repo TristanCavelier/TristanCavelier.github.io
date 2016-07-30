@@ -10,11 +10,11 @@
       http://www.wtfpl.net/ for more details. */
 
   // dependencies: async (env.newDeferred),
-  //               regexp (env.partitionToObject)
+  //               regexp (env.partitionStringToObject)
 
   env.registerLib(envHttp);
 
-  var partitionToObject = env.partitionToObject;
+  var partitionToObject = env.partitionStringToObject;
 
   env.parseHttpHeaders = function (text) {
     // text ->

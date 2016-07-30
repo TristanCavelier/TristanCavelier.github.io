@@ -10,14 +10,14 @@
       http://www.wtfpl.net/ for more details. */
 
   // dependencies: async (env.setTimeout),
-  //               regexp (env.partition),
+  //               regexp (env.partitionString, env.partitionStringToObject),
   // provides: env.parseHtmlElements, env.{f,asyncF}itTextareaToTextHeightListener,
   //           env.findLinksFromDom, env.findLinksFromHtmlDom, env.makeElement,
-  //           env.removeNode, env.insertNodeAfter, env.replaceNode
+  //           env.insertNodeAfter, env.replaceNode
 
   env.registerLib(envHtml);
 
-  var partition = env.partition;
+  var partition = env.partitionString;
 
   env.parseHtmlElements = function (text) {
     // Usage:
@@ -151,13 +151,12 @@
     return element;
   };
 
-  env.removeNode = function (node) { return node.parentNode.removeChild(node); };
   env.insertNodeAfter = function (referenceNode, newNode) { return referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling); };
 
   env.replaceNode = function (referenceNode, newNode) {
     while (referenceNode.childNodes.length > 0) { newNode.appendChild(referenceNode.childNodes[0]); }
     insertNodeAfter(referenceNode, newNode);
-    removeNode(referenceNode);
+    referenceNode.remove();
     return newNode;
   };
 
@@ -376,14 +375,14 @@
     //   [type: "url",     "  'http://ima.ge/bg.png' ", "http://ima.ge/bg.png", "'"],
     //   [type: "data",    ");\n}\n"],
     // ]
-    var result = [], parts = env.partitionToObject(text, /\/\*((?:[^\*]|\*[^\/])*)\*\//g), i = 0, l = parts.length,
+    var result = [], parts = env.partitionStringToObject(text, /\/\*((?:[^\*]|\*[^\/])*)\*\//g), i = 0, l = parts.length,
         subparts, si, sl, data, part, row;
     for (; i < l; i += 1) {
       if (i % 2) {  // comment
         row = [parts[i][0], parts[i][1]]; row.type = "comment";
         result.push(row);
       } else {  // non comment
-        subparts = env.partitionToObject(parts[i][0], /(url\()(\s*(")([^"]*)"\s*|\s*(')([^']*)'\s*|([^\)]*))\)/g);
+        subparts = env.partitionStringToObject(parts[i][0], /(url\()(\s*(")([^"]*)"\s*|\s*(')([^']*)'\s*|([^\)]*))\)/g);
         sl = subparts.length;
         data = "";
         for (si = 0; si < sl; si += 1) {
