@@ -2,14 +2,16 @@
 (function envChannels(env) {
   "use strict";
 
-  /*! Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
+  /*! env.channels.js Version 1.0.0
+
+      Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
       the extent permitted by applicable law. You can redistribute it
       and/or modify it under the terms of the Do What The Fuck You Want
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
-  // dependencies: env.Promise, env.newPromise
+  // dependencies: async (env.newPromise)
   // provides: env.{,new}Channel
   // - A Channel is like a `chan` in go.
 
@@ -94,7 +96,8 @@
   Channel.prototype.send = function (v) {
     /*jslint plusplus: true, ass: true */
     var chan = wm.get(this), next, send;
-    if (chan["[[ChannelError]]"]) return env.Promise.reject(chan["[[ChannelError]]"]);  // XXX throw chan["[[ChannelError]]"]; ?
+    //if (chan["[[ChannelError]]"]) return env.Promise.reject(chan["[[ChannelError]]"]);
+    if (chan["[[ChannelError]]"]) throw chan["[[ChannelError]]"];
     while (chan["[[Channel:next:length]]"] > 0) {
       next = channelFifoPop(chan, "next");
       //if (next && !next.done) { next.resolve({value: v, done: false}); return env.Promise.resolve(); }
@@ -120,7 +123,8 @@
       if (chan["[[ChannelError]]"] === CLOSED_ERROR)  // use Channel.CLOSED_ERROR ?
         //return env.Promise.resolve({value: undefined, done: true});
         return {value: undefined, done: true};
-      return env.Promise.reject(chan["[[ChannelError]]"]);  // XXX throw chan["[[ChannelError]]"]; ?
+      //return env.Promise.reject(chan["[[ChannelError]]"]);
+      throw chan["[[ChannelError]]"];
     }
     return channelFifoPush(chan, "next").promise;
   };
