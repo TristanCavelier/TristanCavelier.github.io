@@ -11,6 +11,60 @@
 
   env.registerLib(envDev);
 
+  /*
+
+  env.blackHoleWriter = {
+    // acts like /dev/null in a unix system
+    write: function () { return; },
+    //readInto: function () { return env.newPromise(function () { return; }); },
+    //read: function () { return env.newPromise(function () { return; }); },
+  };
+
+  function RangeReader(start, end, step) {
+    //     RangeReader(end)
+    //     RangeReader(start, end)
+    //     RangeReader(start, end, step)
+    if (end === undefined) {
+      end = start;
+      start = 0;
+      step = 1;
+    } else if (step === undefined) {
+      step = 1;
+    }
+    this._start = start;
+    this._end = end;
+    this._step = step;
+  }
+  RangeReader.prototype.read = function () {
+    var res = [], i = 0;
+    for (; this._start < this._end; this._start += this._step) res[i++] = this._start;
+    return res;
+  };
+  RangeReader.prototype.readInto = function (array, from, length) {
+    if (from === undefined) from = 0;
+    if (length === undefined) length = array.length - from;
+    for (var i = 0; i < length && this._start < this._end; this._start += this._step, ++i) array[from++] = this._start;
+    return i;
+  };
+  env.RangeReader = RangeReader;
+  env.newRangeReader = function () { var c = env.RangeReader, o = Object.create(c.prototype); c.apply(o, arguments); return o; };
+
+  function* range(start, end, step)
+    //     range(end)
+    //     range(start, end)
+    //     range(start, end, step)
+    if (end === undefined) {
+      end = start;
+      start = 0;
+      step = 1;
+    } else if (step === undefined) {
+      step = 1;
+    }
+    for (; this._start < this._end; this._start += this._step) yield this._start;
+  }
+
+  */
+
   var raceWinOrCancelWithIndex = function (tasks) {
     // API stability level: 1 - Experimental
     var i, l = tasks.length, p = new Array(l), d = env.newDeferred();
