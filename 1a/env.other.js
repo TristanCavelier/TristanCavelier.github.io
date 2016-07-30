@@ -995,4 +995,126 @@
   //if ((tmp = ab2hex(env.md5sumArrayBuffer(bs2ab("The quick brown fox jumps over the lazy black and white dog.")))) !== "a62edd3f024b98a4f6fce7afb7f066eb") { alert(tmp); }
   //if ((tmp = ab2hex(env.md5sumArrayBuffer(bs2ab("")))) !== "d41d8cd98f00b204e9800998ecf8427e") { alert(tmp); }
 
+  env.xxxfindLinksFromHtmlTags = function (text) {
+    var a = env.browseHtml(text), l = a.length, i, events = [], b, j, m;
+    for (i = 0; i < l; i += 1) {
+      if (a[i].type === "startendtag" || a[i].type === "starttag") {
+        b = a[i].attributes;
+        m = b.length;
+        for (j = 0; j < m; j += 1) {
+          if (b[j].name === "href" || b[j].name === "src") {
+            events.push({href: b[j].value, tag: a[i], tagIndex: i, attribute: b[j], attributeIndex: j});
+          }
+        }
+      } else if (a[i].type === "starttag" && a[i].name.toLowerCase() === "html") {
+        b = a[i].attributes;
+        m = b.length;
+        for (j = 0; j < m; j += 1) {
+          if (b[j].name === "manifest") {
+            events.push({href: b[j].value, tag: a[i], tagIndex: i, attribute: b[j], attributeIndex: j});
+          }
+        }
+      }
+    }
+    return events;
+  };
+
+  //var eat = function (regexp, text, i, parser) {
+  //  if (!(i = regexp.exec(text.slice(i)))) { return null; }
+  //  if (parser) { return {match: i[0], result: parser(i)}; }
+  //  return {match: i[0], result: i[0]};
+  //};
+
+  ////env.parseHtmlParts = function (text) {};
+  ////env.eatHtmlParts = function (text, i) {
+  ////  while
+  ////    eat text
+  ////    eat tag or comment
+  ////};
+  //env.eatHtmlComment = function (text, i) { return eat(/^<!--([^-]|-[^-]|--[^>])-->)/, text, i, function (res) { return {rawText: res[1], text: res[1]}; }); };  // unescape html chars for text
+  //env.eatHtmlText = function (text, i) {
+  //  var tmp = /(?:<!--|<[\?!\/]?[a-zA-Z])/.exec(text.slice(i));
+  //  if (tmp !== null) {
+  //    if (tmp.index === 0) { return null; }
+  //    tmp = {match: text.slice(i, i + tmp.index)};
+  //    tmp.result = tmp.match;  // unescape html chars !
+  //  } else {
+  //    tmp = {match: text.slice(i)};
+  //    tmp.result = tmp.match;  // unescape html chars !
+  //  }
+  //  return tmp;
+  //};
+  //env.eatTag = function (text, i) {  // rename eatHtmlTag
+  //  var result = {match: "", result: {}}, tmp, type, oi = i;
+  //  if (!(tmp = /^<([\?!\/])?([a-zA-Z][^\/>\s]*)/.exec(text.slice(i)))) { return null; }  // XXX check if = can be in the tag name
+  //  result.result.name = tmp[2];
+  //  i += tmp[0].length;
+  //  switch (tmp[1]) {
+  //    case "?": type = "pi"; break;
+  //    case "!": type = "decl"; break;
+  //    //  if (tmp[2].toLowerCase() === "doctype") {
+  //    //    type = "decl";
+  //    //  } else {
+  //    //    type = "unknown decl";
+  //    //  }
+  //    //  break;
+  //    case "/": type = "end"; break;
+  //    default: type = "start"; break;
+  //  }
+  //  if ((tmp = env.eatAttributeSeparator(text, i)) !== null) { i += tmp.match.length; }
+  //  if ((tmp = env.eatAttributeList(text, i)) !== null) {
+  //    result.result.attributes = tmp.result;
+  //    i += tmp.match.length;
+  //  }
+  //  if ((tmp = env.eatAttributeSeparator(text, i)) !== null) {
+  //    i += tmp.match.length;
+  //    if (type === "start" && tmp.match[tmp.match.length - 1] === "/") { type = "startend"; }
+  //  }
+  //  if (text[i] !== ">") { return null; }
+  //  result.match = text.slice(oi, i + 1);
+  //  result.result.type = type;
+  //  return result;
+  //};
+  //env.eatAttributeList = function (text, i) {  // rename eatHtmlTagAttributeList
+  //  var result = {match: "", result: []}, tmp, tmp2;
+  //  if (!(tmp = env.eatAttribute(text, i))) { return null; }
+  //  result.match += tmp.match;
+  //  result.result.push(tmp.result);
+  //  while ((tmp = env.eatAttributeSeparator(text, i + result.match.length)) !== null) {
+  //    tmp2 = tmp.match;
+  //    if (!(tmp = env.eatAttribute(text, i + tmp2.length + result.match.length))) { return result; }
+  //    result.match += tmp2 + tmp.match;
+  //    result.result.push(tmp.result);
+  //  }
+  //  return result;
+  //};
+  //env.eatAttributeSeparator = function (text, i) { return eat(/^[\s\/]*/, text, i); };  // rename eatHtmlTagAttributeSeparator
+  //env.eatAttribute = function (text, i) {  // rename eatHtmlTagAttribute
+  //  var tmp, tmp2;
+  //  if (!(tmp = env.eatAttributeKey(text, i))) {
+  //    if (text[i] !== "=") { return null; }
+  //    if (!(tmp = env.eatAttributeValue(text, i + 1))) {
+  //      return {match: "=", result: {name: "", value: ""}};
+  //    }
+  //    return {match: "=" + tmp.match, result: {name: "", value: tmp.result}};
+  //  }
+  //  if (text[i + tmp.match.length] !== "=") {
+  //    return {match: tmp.match, result: {name: tmp.result, value: null}};
+  //  }
+  //  if (!(tmp2 = env.eatAttributeValue(text, i + tmp.match.length + 1))) {
+  //    return {match: tmp.match + "=", result: {name: tmp.result, value: ""}};
+  //  }
+  //  return {match: tmp.match + "=" + tmp2.match, result: {name: tmp.result, value: tmp2.result}};
+  //};
+  //env.eatAttributeKey = function (text, i) {  // rename eatHtmlTagAttributeKey
+  //  var text = text.slice(i), tmp;
+  //  if (!(tmp = /^(?:[^\/=>\s]+)/.exec(text))) { return null; }
+  //  return {match: tmp[0], result: tmp[0]};
+  //};
+  //env.eatAttributeValue = function (text, i) {  // rename eatHtmlTagAttributeValue
+  //  var text = text.slice(i), tmp;
+  //  if (!(tmp = /^(?:"([^"]*)"|'([^']*)'|((?:[^'">\s][^>\s]*)?))/.exec(text))) { return null; }
+  //  return {match: tmp[0], result: tmp[1] || tmp[2] || tmp[3]};  // unescape html chars
+  //};
+
 }(this.env));
