@@ -63,6 +63,7 @@
   env.writeFileDescriptor = wrapNodeJsAsyncMethod(fs.write);
   env.statFileDescriptor = wrapNodeJsAsyncMethod(fs.fstat);
   env.statFsNode = wrapNodeJsAsyncMethod(fs.stat);
+  env.lstatFsNode = wrapNodeJsAsyncMethod(fs.lstat);
   env.writeFile = wrapNodeJsAsyncMethod(fs.writeFile);
   env.unlinkFsNode = wrapNodeJsAsyncMethod(fs.unlink);
   env.renameFsNode = wrapNodeJsAsyncMethod(fs.rename);
