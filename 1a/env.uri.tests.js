@@ -71,5 +71,27 @@
     });
     end();
   });
+  test("url object http://host.com", 100, [
+    "href", "http://host.com",
+    "protocol", "http:",
+    "user", undefined,
+    "password", undefined,
+    "hostname", "host.com",
+    "port", undefined,
+    "subDomain", undefined,
+    "domain", "host.com",
+    "origin", "http://host.com",
+    "pathname", undefined,
+    "rawQuery", undefined,
+    "query", undefined,
+    "search", undefined,
+    "hash", undefined,
+  ], function (res, end) {
+    var url = env.parseUrl("http://host.com");
+    ["href", "protocol", "user", "password", "hostname", "port", "subDomain", "domain", "origin", "pathname", "rawQuery", "query", "search", "hash"].forEach(function (key) {
+      res.push(key, url[key]);
+    });
+    end();
+  });
 
 }(this.env));

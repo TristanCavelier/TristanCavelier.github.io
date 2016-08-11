@@ -2,7 +2,7 @@
 (function envUri(env) {
   "use strict";
 
-  /*! env.uri.js Version 1.0.0
+  /*! env.uri.js Version 1.0.1
 
       Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
@@ -146,9 +146,9 @@
     if (parsed[9] !== undefined) { result.search = parsed[9]; }
     if (parsed[10] !== undefined) { result.hash = parsed[10]; }
     if (result.protocol === "http:") {
-      result.origin = "http://" + result.hostname + (result.port === 80 ? "" : ":" + result.port);
+      result.origin = "http://" + result.hostname + (result.port === undefined || result.port === 80 ? "" : ":" + result.port);
     } else if (result.protocol === "https:") {
-      result.origin = "https://" + result.hostname + (result.port === 443 ? "" : ":" + result.port);
+      result.origin = "https://" + result.hostname + (result.port === undefined || result.port === 443 ? "" : ":" + result.port);
     }
     if (result.domain) {
       tmp = result.domain.split(".");
