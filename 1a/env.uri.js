@@ -152,8 +152,10 @@
     }
     if (result.domain) {
       tmp = result.domain.split(".");
-      if (tmp.length > 1) { result.subDomain = tmp.slice(0, -2).join("."); }
-      result.domain = tmp.slice(-2).join(".");
+      if (tmp.length > 2) {
+        result.subDomain = tmp.slice(0, -2).join(".");
+        result.domain = tmp.slice(-2).join(".");
+      }
     }
     if (result.search !== undefined) {
       result.query = {};
