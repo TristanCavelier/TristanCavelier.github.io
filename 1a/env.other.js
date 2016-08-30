@@ -16,6 +16,72 @@
 
   env.registerLib(envOther);
 
+  function MapPolyfill(iterable) {
+    var d = this["[[MapPolyfill:data]]"] = [], i, l, a;
+    if (iterable !== undefined && iterable !== null) {
+      a = Object.keys(iterable);
+      i = 0;
+      l = a.length;
+      for (; i < l; i += 1) this.set(a[i], iterable[a[i]]);
+    }
+  }
+  MapPolyfill.prototype.size = 0;
+  MapPolyfill.prototype.clear = function () {
+    this["[[MapPolyfill:data]]"].length = 0;
+    this.size = 0;
+  };
+  MapPolyfill.prototype.delete = function (key) {
+    var i = 0, d = this["[[MapPolyfill:data]]"], l = d.length;
+    for (; i < l; i += 2) {
+      if (d[i] === key) {
+        d.splice(i, 2);
+        this.size = (l / 2) - 1;
+        return;
+      }
+    }
+  };
+  MapPolyfill.prototype.entries = function () {
+    var i = 0, d = this["[[MapPolyfill:data]]"], l = d.length, res = [];
+    for (; i < l; i += 2) res.push([d[i], d[i + 1]]);
+    return res;
+  };
+  MapPolyfill.prototype.forEach = function (callbackFn, thisArg) {
+    var i = 0, d = this["[[MapPolyfill:data]]"], l = d.length;
+    for (; i < l; i += 2) callbackFn.call(thisArg, d[i], d[i + 1]);
+    return res;
+  };
+  MapPolyfill.prototype.get = function (key) {
+    var i = 0, d = this["[[MapPolyfill:data]]"], l = d.length;
+    for (; i < l; i += 2) if (d[i] === key) return d[i + 1];
+  };
+  MapPolyfill.prototype.has = function (key) {
+    var i = 0, d = this["[[MapPolyfill:data]]"], l = d.length;
+    for (; i < l; i += 2) if (d[i] === key) return true;
+    return false;
+  };
+  MapPolyfill.prototype.keys = function () {
+    var i = 0, d = this["[[MapPolyfill:data]]"], l = d.length, res = [];
+    for (; i < l; i += 2) res.push(d[i]);
+    return res;
+  };
+  MapPolyfill.prototype.set = function (key, value) {
+    var i = 0, d = this["[[MapPolyfill:data]]"], l = d.length;
+    for (; i < l; i += 2) {
+      if (d[i] === key) {
+        d[i + 1] = value;
+        return;
+      }
+    }
+    d.push(key, value);
+    this.size = (l / 2) + 1;
+  };
+  MapPolyfill.prototype.values = function () {
+    var i = 0, d = this["[[MapPolyfill:data]]"], l = d.length, res = [];
+    for (; i < l; i += 2) res.push(d[i + 1]);
+    return res;
+  };
+  env.MapPolyfill = MapPolyfill;
+
   function encodeTextToUtf8ByteArray(s) {
     // Handles unicode from U+0000 to U+10FFFF
     // Assuming javascript string is Utf-16
