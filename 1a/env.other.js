@@ -51,6 +51,41 @@
     return r.join("\n");
   };
 
+  function DiffEditor() {
+    var it = this;
+    it.textareaA = env.makeElement("textarea");
+    it.textareaB = env.makeElement("textarea");
+    it.resultTable = env.makeElement("table", [["style", "white-space: pre; font-family: monospace;"]], [
+      it.resultTableBody = env.makeElement("tbody")
+    ]);
+    it.textareaA.oninput = it.textareaB.oninput = function () {
+      clearTimeout(it._timer);
+      if (it.autoRunInterval === -1) return;
+      if (it.autoRunInterval === 0) return it.run();
+      it._timer = setTimeout(function () { it.run(); }, it.autoRunInterval);
+    };
+    it.element = env.makeElement("div", [], [
+      it.textareaA,
+      it.textareaB,
+      it.resultTable
+    ]);
+  }
+  DiffEditor.prototype.autoRunInterval = 500;  // -1 is disabled, 0 is instant
+  DiffEditor.prototype.eval = env.lineDiff;
+  DiffEditor.prototype.run = function () {
+    var it = this;
+    this.resultTableBody.innerHTML = "";
+    this.eval(it.textareaA.value, it.textareaB.value, function (e) {
+      it.resultTableBody.appendChild(env.makeElement("tr", [], [
+        env.makeElement("td", [], [(e.lineA || " ").toString()]),
+        env.makeElement("td", [], [(e.lineB || " ").toString()]),
+        env.makeElement("td", [], [e.operator + e.line])
+      ]));
+    });
+  };
+  env.DiffEditor = DiffEditor;
+  //new DiffEditor().element;
+
   function MapPolyfill(iterable) {
     var d = this["[[MapPolyfill:data]]"] = [], i, l, a;
     if (iterable !== undefined && iterable !== null) {
