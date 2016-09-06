@@ -20,15 +20,15 @@
     function rec(matrix, a1, a2, x, y, parsedLineListener) {
       if (x > 0 && y > 0 && a1[y - 1] === a2[x - 1]) {
         rec(matrix, a1, a2, x - 1, y - 1, parsedLineListener);
-        parsedLineListener({lineA: x, lineB: y, operator: " ", line: a1[y - 1]});
-      } else {
-        if (x > 0 && (y === 0 || matrix[y][x - 1] >= matrix[y - 1][x])) {
-          rec(matrix, a1, a2, x - 1, y, parsedLineListener);
-          parsedLineListener({lineA: x, lineB: null, operator: "+", line: a2[x - 1]});
-        } else if(y > 0 && (x === 0 || matrix[y][x - 1] < matrix[y - 1][x])) {
-          rec(matrix, a1, a2, x, y - 1, parsedLineListener);
-          parsedLineListener({lineA: null, lineB: y, operator: "-", line: a1[y - 1]});
-        }
+        return parsedLineListener({lineA: x, lineB: y, operator: " ", line: a1[y - 1]});
+      }
+      if (x > 0 && (y === 0 || matrix[y][x - 1] >= matrix[y - 1][x])) {
+        rec(matrix, a1, a2, x - 1, y, parsedLineListener);
+        return parsedLineListener({lineA: x, lineB: null, operator: "+", line: a2[x - 1]});
+      }
+      if (y > 0 && (x === 0 || matrix[y][x - 1] < matrix[y - 1][x])) {
+        rec(matrix, a1, a2, x, y - 1, parsedLineListener);
+        return parsedLineListener({lineA: null, lineB: y, operator: "-", line: a1[y - 1]});
       }
     }
 
@@ -38,19 +38,16 @@
 
     for (y = 0; y < matrix.length; y += 1) {
       matrix[y] = new Array(a2.length + 1);
-      for(x = 0; x < matrix[y].length; x += 1) matrix[y][x] = 0;
+      for (x = 0; x < matrix[y].length; x += 1) matrix[y][x] = 0;
     }
 
     for (y = 1; y < matrix.length; y += 1) {
       for (x = 1; x < matrix[y].length; x += 1) {
-        if (a1[y-1] === a2[x-1]) {
-          matrix[y][x] = 1 + matrix[y-1][x-1];
-        } else {
-          matrix[y][x] = Math.max(matrix[y-1][x], matrix[y][x-1]);
-        }
+        if (a1[y - 1] === a2[x - 1]) matrix[y][x] = 1 + matrix[y - 1][x - 1];
+        else matrix[y][x] = Math.max(matrix[y - 1][x], matrix[y][x - 1]);
       }
     }
-    rec(matrix, a1, a2, x - 1, y - 1, parsedLineListener || function (event) { r.push(event.operator + event.line); });
+    rec(matrix, a1, a2, x - 1, y - 1, parsedLineListener || function (e) { r.push(e.operator + e.line); });
     return r.join("\n");
   };
 
