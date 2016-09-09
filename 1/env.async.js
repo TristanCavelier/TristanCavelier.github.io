@@ -2,7 +2,7 @@
 (function envAsync(env) {
   "use strict";
 
-  /*! Version 1.0.0
+  /*! Version 1.0.1
 
       Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
@@ -20,7 +20,7 @@
   env.setTimeout = setTimeout.bind(null);
   env.clearTimeout = clearTimeout.bind(null);
 
-  var setImmediate = typeof Promise === "function " ? (function () {
+  var setImmediate = typeof Promise === "function" ? (function () {
     var resolved = Promise.resolve();
     function setImmediate(fn) {
       /*jslint plusplus: true */
