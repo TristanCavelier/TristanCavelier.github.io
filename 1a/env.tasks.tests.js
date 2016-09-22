@@ -71,7 +71,7 @@
     });
     task.then(end, end);
   });
-  test("task: how to use defer to avoid cancellation before var assignment", 300, ["closer is closed"], function (res, end) {
+  test("task: how to use defer to avoid cancellation before var assignment", 1000, ["defer close", "closer is closed"], function (res, end) {
     // test preparation
     var closerStatus = "not instanciated";
     var actualCloser = {close: function () { closerStatus = "closed"; }};
@@ -80,6 +80,7 @@
     // actual test
     var closer, task = new env.Task(function* () {
       var closerTask = getCloserTask();
+      res.push("defer close")
       defer(this, function () { closerTask.then(function (closer) { closer.close(); }); });
       closer = yield closerTask;
       res.push("task bottom");
