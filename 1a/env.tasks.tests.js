@@ -15,16 +15,22 @@
   function test(name, timeout, expected, testFn) {
     var res = [], timer;
     function end() {
-      if (timer === undefined) return error("test: " + name + ", `end` called twice");
-      timer = clearTimeout(timer);
+      if (timer === undefined) return error("test `" + name + "`, `end` called twice");
+      timer = clearTimeout(timer);  // timer should be set to undefined
       if (JSON.stringify(res) !== JSON.stringify(expected)) {
-        error("test: " + name + ", result `" + JSON.stringify(res) + "` !== `" + JSON.stringify(expected) + "` expected");
+        error("test `" + name + "`, result `" + JSON.stringify(res) + "` !== `" + JSON.stringify(expected) + "` expected");
       }
     }
     timer = setTimeout(function () {
-      error("test: " + name + ", timeout ! result `" + JSON.stringify(res) + "` <-> `" + JSON.stringify(expected) + "` expected");
+      try { if (typeof end.onbeforetimeout === "function") end.onbeforetimeout(); }
+      catch (e) { error("test: " + name + ", error on before timeout ! `" + e + "`"); }
+      if (timer === undefined) return;  // it has ended in before timeout
+      error("test `" + name + "`, timeout ! result `" + JSON.stringify(res) + "` <-> `" + JSON.stringify(expected) + "` expected");
     }, timeout);
-    setTimeout(function () { testFn(res, end); });
+    setTimeout(function () {
+      try { testFn(res, end); }
+      catch (e) { error("test `" + name + "`, error ! result `" + e + "`"); }
+    });
   }
 
   function sleep(ms) { return env.newPromise(function (resolve) { setTimeout(resolve, ms); }); }
@@ -71,7 +77,7 @@
     });
     task.then(end, end);
   });
-  test("task: how to use defer to avoid cancellation before var assignment", 300, ["defer close", "catch cancel", "closer is closed"], function (res, end) {
+  test("task: how to use defer to avoid cancellation before var assignment", 300, ["defer close", "closer is closed"], function (res, end) {
     // test preparation
     var closerStatus = "not instanciated";
     var actualCloser = {close: function () { closerStatus = "closed"; }};
@@ -83,17 +89,14 @@
       res.push("defer close");
       defer(this, function () { closerTask.then(function (closer) { closer.close(); }); });
       closer = yield closerTask;
-      res.push("task bottom");
+      res.push("task bottom - task should be cancelled");
     });
     task.cancel();
     // test end
-    res.push("catch cancel");
-    task.catch(function () {
-      //setTimeout(function () {  // `defer(this...` is set before this `this.catch`, so `this.catch` is called after `defer(this...`
+    end.onbeforetimeout = function () {
       res.push("closer is " + closerStatus);
       end();
-      //});
-    });
+    };
   });
   test("task: race win or cancel should cancel just after first wins", 300, ["closed", "wins", "closed"], function (res, end) {
     // test preparation
