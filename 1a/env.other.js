@@ -76,7 +76,11 @@
     var it = this;
     this.resultTableBody.innerHTML = "";
     this.eval(it.textareaA.value, it.textareaB.value, function (e) {
-      it.resultTableBody.appendChild(env.makeElement("tr", [], [
+      it.resultTableBody.appendChild(env.makeElement("tr", (
+        e.operator === "+" ? [["style", "background-color:rgba(0, 255, 0, 0.5);"]] :
+        e.operator === "-" ? [["style", "background-color:rgba(255, 0, 0, 0.5);"]] :
+        []
+      ), [
         env.makeElement("td", [], [(e.lineA || " ").toString()]),
         env.makeElement("td", [], [(e.lineB || " ").toString()]),
         env.makeElement("td", [], [e.operator + e.line])
