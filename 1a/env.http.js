@@ -2,7 +2,7 @@
 (function envHttp(env) {
   "use strict";
 
-  /*! env.http.js Version 1.0.0
+  /*! env.http.js Version 1.0.1
 
       Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
@@ -105,14 +105,15 @@
   env.headerParamValueStringRegExp = "(?:(?:" + env.headerParamQuotedValueStringRegExp + "|" + env.headerParamUnquotedValueStringRegExp + ")+)";
   env.headerParamStringParserRegExp = "(?:(" + env.headerParamNameStringRegExp + "?)(?:=(" + env.headerParamValueStringRegExp + "?))?)";
   env.headerParamsStringRegExp = "(?:" + env.headerParamStringParserRegExp + "(?:;" + env.headerParamStringParserRegExp + ")*)";
-  env.headerParamsMatcherRegExp = new RegExp("^" + env.headerParamsStringRegExp + "$");
-  var headerParamSearchRegExp = env.headerParamSearchRegExp = new RegExp(";" + env.headerParamStringParserRegExp, "g");
+  env.headerParamsMatcherRegExp = new RegExp("^" + env.headerParamsStringRegExp + "$");  // BBB
+  env.headerParamSearchRegExp = new RegExp(";" + env.headerParamStringParserRegExp, "g");  // BBB
 
   env.parseHeaderRawParams = function (text) {
     // ' abc = "def" ;ghi=jkl' -> ["abc", " \"def\" ", "ghi", "jkl"]
 
     // API stability level: 1 - Experimental
-    var a = env.partitionStringToObject(";" + text, headerParamSearchRegExp), l = a.length, i, result = [];
+    var a = env.partitionStringToObject(";" + text, /;(?:((?:[^=;]+)?)(?:=((?:(?:(?:"(?:\\.|[^\"])*(?:"|$))|(?:[^";]+))+)?))?)/g),  // new RegExp(";" + env.headerParamStringParserRegExp, "g")
+        l = a.length, i, result = [];
     for (i = 0; i < l; i += 1) {
       if (i % 2) {
         if (a[i][2] !== undefined) { result.push(a[i][1], a[i][2]); }
@@ -180,15 +181,16 @@
   env.metadataValueStringRegExp = "(?:(?:" + env.metadataQuotedValueStringRegExp + "|" + env.metadataUnquotedValueStringRegExp + ")+)";
   env.metadataStringParserRegExp = "(?:(" + env.metadataNameStringRegExp + "?)(?:=(" + env.metadataValueStringRegExp + "?))?)";
   env.metadataListStringRegExp = "(?:" + env.metadataStringParserRegExp + "(?:[;,]" + env.metadataStringParserRegExp + ")*)";
-  env.metadataListMatcherRegExp = new RegExp("^" + env.metadataListStringRegExp + "$");
-  var metadataSearchRegExp = env.metadataSearchRegExp = new RegExp("(;|,)" + env.metadataStringParserRegExp, "g");
+  env.metadataListMatcherRegExp = new RegExp("^" + env.metadataListStringRegExp + "$");  // BBB
+  env.metadataSearchRegExp = new RegExp("(;|,)" + env.metadataStringParserRegExp, "g");  // BBB
 
   env.parseRawMetadataList = function (text) {
     // Parse -> ' abc = "def" ;ghi=jkl,text/html; charset=utf-8'
     //    to -> [[" abc ", " \"def\" ", "ghi", "jkl"], ["text/html", null, " charset", "utf-8"]]
 
     // API stability level: 1 - Experimental
-    var a = env.partitionStringToObject("," + text, metadataSearchRegExp), l = a.length, i, m, result = [], c = null;
+    var a = env.partitionStringToObject("," + text, /(;|,)(?:((?:[^=;,]+)?)(?:=((?:(?:(?:"(?:\\.|[^\"])*(?:"|$))|(?:[^";,]+))+)?))?)/g),  // new RegExp("(;|,)" + env.metadataStringParserRegExp, "g")
+        l = a.length, i, m, result = [], c = null;
     for (i = 0; i < l; i += 1) {
       if (i % 2) {
         m = a[i];
