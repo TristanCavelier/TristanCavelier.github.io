@@ -2,7 +2,7 @@
 (function envRegExp(env) {
   "use strict";
 
-  /*! env.regexp.js Version 1.0.0
+  /*! env.regexp.js Version 1.1.0
 
       Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
@@ -14,6 +14,7 @@
   // provides: env.selectString, env.partitionString, env.partitionStringToObject,
   //           env.escapeRegExp,
   //           env.parseRegExpToStrings, env.parseStringifiedRegExp
+  //           env.{new,}RegExpIterator
 
   env.registerLib(envRegExp);
 
@@ -83,5 +84,31 @@
     }
     return null;
   };
+
+  function RegExpIterator(text, regExp) {
+    // Allow to iterate over a text thank to a regexp.
+    // The behavior differs from the `String.replace`
+    // method because the regexp is "reused" in each
+    // iteration. Ex:
+    //     rei = new RegExpIterator("Hello", /^(Hel|lo)/);
+    //     rei.next() -> {value: re.exec("Hello")}
+    //     rei.next() -> {value: re.exec("lo")}
+    //     rei.next() -> {done: true}
+
+    this.nextIndex = 0;
+    this.input = text;
+    this.regExp = regExp;
+  }
+  RegExpIterator.prototype.next = function () {
+    var o = this.regExp.exec(this.input.slice(this.nextIndex));
+    if (o === null) {
+      this.nextIndex = this.input.length;
+      return {value: undefined, done: true};
+    }
+    this.nextIndex += o.index + o[0].length;
+    return {value: o, done: false};
+  };
+  env.RegExpIterator = RegExpIterator;
+  env.newRegExpIterator = function () { var c = env.RegExpIterator, o = Object.create(c.prototype); c.apply(o, arguments); return o; };
 
 }(this.env));
