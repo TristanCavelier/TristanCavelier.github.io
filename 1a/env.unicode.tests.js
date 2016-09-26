@@ -56,6 +56,7 @@
     nativeSoftDecodeUtf8BytesToText(bytes, function (err, text) {
       test("unicode " + bytesToJs(bytes), 300, [text], function (res, end) {
         res.push(env.softDecodeUtf8BytesToText(bytes));
+        end();
       });
     });
   }
