@@ -98,6 +98,7 @@
     if (error === undefined) error = errorwrite;
 
     for (n = 0; (c = cached ? c2 : read(n)) >= 0; n += 1) {
+      cached = false;
       if (c <= 0x7F) write(c);
       else if (c <= 0x7FF) write((c >> 6) | 0xc0, (c & 0x3f) | 0x80);
       else if (0xd800 <= c && c <= 0xdbff) {
