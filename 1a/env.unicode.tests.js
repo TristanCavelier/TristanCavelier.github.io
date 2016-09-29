@@ -68,46 +68,70 @@
     return String.fromCharCode.apply(String, r);
   }
 
-  function testSoftDecodeUtf8BytesToText(bytes) {
+  function testSoftDecodeUtf8BytesToString(bytes) {
     nativeSoftDecodeUtf8BytesToText(bytes, function (err, text) {
       test("unicode " + bytesToJs(bytes), 300, [text], function (res, end) {
-        res.push(env.softDecodeUtf8BytesToText(bytes));
+        res.push(env.decodeUtf8BytesToString(bytes));
         end();
       });
     });
   }
-  function testSoftEncodeTextToUtf8Bytes(text) {
+  function testSoftEncodeStringToUtf8Bytes(text) {
     nativeSoftEncodeTextToUtf8Bytes(text, function (err, bytes) {
       test("unicode " + JSON.stringify(text) + " " + bytesToJs(textToShorts(text)), 300, Array.from(new Uint8Array(bytes)), function (res, end) {
-        res.push.apply(res, env.softEncodeTextToUtf8Bytes(text));
+        res.push.apply(res, env.encodeStringToUtf8Bytes(text));
         end();
       });
+    });
+  }
+  function testFromCodePoint(point) {
+    var r;
+    try { r = String.fromCodePoint(point); } catch (e) { r = e.message; }
+    test("unicode point 0x" + (point).toString(16), 300, [r], function (res, end) {
+      try { res.push(env.encodeCodePointToString(point)); } catch (e) { res.push(e.message); }
+      end();
     });
   }
 
   //////////////////////////////////////////////
   // Unicode tests
-  testSoftDecodeUtf8BytesToText([0x31]);  // "1"
-  testSoftDecodeUtf8BytesToText([0xC3, 0xA9]);  // &eacute;
-  testSoftDecodeUtf8BytesToText([0xC2, 0x80]);  // String.fromCharCode(128);
-  testSoftDecodeUtf8BytesToText([0xA9]);  // String.fromCharCode(65533);
-  testSoftDecodeUtf8BytesToText([0xE8]);
-  testSoftDecodeUtf8BytesToText([0xD8, 0x37, 0x22]);  // "\uFFFF7\""
-  testSoftDecodeUtf8BytesToText([0xC3, 0xA9, 0xA9, 0xA9]);
-  testSoftDecodeUtf8BytesToText([0xc0,0x9d]);
-  testSoftDecodeUtf8BytesToText([0xc1,0x98]);
-  //testSoftDecodeUtf8BytesToText(randBytes(1));
-  //testSoftDecodeUtf8BytesToText(randBytes(2));
-  //testSoftDecodeUtf8BytesToText(randBytes(3));
-  //testSoftDecodeUtf8BytesToText(randBytes(4));
-  testSoftDecodeUtf8BytesToText(randBytes(Math.random() * 100));
+  testSoftDecodeUtf8BytesToString([0x31]);  // "1"
+  testSoftDecodeUtf8BytesToString([0xC3, 0xA9]);  // "é";
+  testSoftDecodeUtf8BytesToString([0xC2, 0x80]);  // String.fromCharCode(128);
+  testSoftDecodeUtf8BytesToString([0xA9]);  // String.fromCharCode(65533);
+  testSoftDecodeUtf8BytesToString([0xE8]);
+  testSoftDecodeUtf8BytesToString([0xD8, 0x37, 0x22]);  // "\uFFFF7\""
+  testSoftDecodeUtf8BytesToString([0xC3, 0xA9, 0xA9, 0xA9]);
+  testSoftDecodeUtf8BytesToString([0xc0,0x9d]);
+  testSoftDecodeUtf8BytesToString([0xc1,0x98]);
+  testSoftDecodeUtf8BytesToString([0xf6,0x84,0x93,0xb6]);
+  //testSoftDecodeUtf8BytesToString(randBytes(1));
+  //testSoftDecodeUtf8BytesToString(randBytes(2));
+  //testSoftDecodeUtf8BytesToString(randBytes(3));
+  //testSoftDecodeUtf8BytesToString(randBytes(4));
+  testSoftDecodeUtf8BytesToString(randBytes(Math.random() * 100));
 
-  testSoftEncodeTextToUtf8Bytes("a");
-  testSoftEncodeTextToUtf8Bytes("eacute is é");
-  testSoftEncodeTextToUtf8Bytes("日本語");
-  testSoftEncodeTextToUtf8Bytes("\udfff");
-  testSoftEncodeTextToUtf8Bytes("\ue000");
-  testSoftEncodeTextToUtf8Bytes(String.fromCharCode(0x5359,0xdc39));
-  testSoftEncodeTextToUtf8Bytes(randText(Math.random() * 100));
+  testSoftEncodeStringToUtf8Bytes("a");
+  testSoftEncodeStringToUtf8Bytes("eacute is é");
+  testSoftEncodeStringToUtf8Bytes("日本語");
+  testSoftEncodeStringToUtf8Bytes("\udfff");
+  testSoftEncodeStringToUtf8Bytes("\ue000");
+  testSoftEncodeStringToUtf8Bytes(String.fromCharCode(0x5359,0xdc39));
+  testSoftEncodeStringToUtf8Bytes(randText(Math.random() * 100));
+
+  //testFromCodePoint(0x00);
+  //testFromCodePoint(0x20);
+  //testFromCodePoint(0x7F);
+  //testFromCodePoint(0x80);
+  //testFromCodePoint(0x7FF);
+  //testFromCodePoint(0x800);
+  //testFromCodePoint(0xFEFF);
+  //testFromCodePoint(0xFFFE);
+  //testFromCodePoint(0xFFFF);
+  //testFromCodePoint(0x10000);
+  //testFromCodePoint(0x10FFFF);
+  //testFromCodePoint(0x110000);
+  //testFromCodePoint(0x1FFFFF);
+  //testFromCodePoint(0xFFFFFF);
 
 }(this.env));
