@@ -139,7 +139,7 @@
 
 
   env.decodeUtf8 = function (params) {
-    // params.read(index) function that returns an uint8,
+    // params.read(index) (optional) function that returns an uint8,
     //   `index` is the current position to read,
     //   it never reads the same index twice. If `read` is not set,
     //   `params` is considered as an array of byte.
