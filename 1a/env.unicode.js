@@ -47,7 +47,7 @@
     //   (uint32), `index` is the current position to read,
     //   it never reads the same index twice. If `read` is not set,
     //   `params` is considered as an array of code point (uint32).
-    // params.write(bytes...) (optional) function use to push
+    // params.write(codes...) (optional) function use to push
     //   utf16 uint16, if `write` is not set, the main function
     //   returns an array of uint16.
     // params.error(message, index, code) (optional) function use on
