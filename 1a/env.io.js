@@ -13,7 +13,7 @@
 
   // dependency: tasks (env.QuickTask.exec)
 
-  env.registerLib(envIo);
+  if (env.registerLib) env.registerLib(envIo);
 
   function BufferWriter(buffer) {
     // Usage:

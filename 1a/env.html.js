@@ -2,7 +2,7 @@
 (function envHtml(env) {
   "use strict";
 
-  /*! env.html.js Version 1.0.0
+  /*! env.html.js Version 1.0.1
 
       Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
@@ -31,7 +31,7 @@
   //           env.browseHtml,
   //           env.parseHtmlTagAttributes
 
-  env.registerLib(envHtml);
+  if (env.registerLib) env.registerLib(envHtml);
 
   env.escapeHtml = function (text) {
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");

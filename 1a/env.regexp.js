@@ -2,7 +2,7 @@
 (function envRegExp(env) {
   "use strict";
 
-  /*! env.regexp.js Version 1.1.0
+  /*! env.regexp.js Version 1.1.1
 
       Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
@@ -16,7 +16,7 @@
   //           env.parseRegExpToStrings, env.parseStringifiedRegExp
   //           env.{new,}RegExpIterator
 
-  env.registerLib(envRegExp);
+  if (env.registerLib) env.registerLib(envRegExp);
 
   env.selectString = function (text, matcher) {  // slower than partitionString Oo'
     // select("a b c b a", /a/g) -> [0,1,8,9]

@@ -2,7 +2,7 @@
 (function envStringHelpers(env) {
   "use strict";
 
-  /*! env.string-helpers.js Version 1.0.0
+  /*! env.string-helpers.js Version 1.0.1
 
       Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
@@ -13,7 +13,7 @@
 
   // provides: env.formatStringFromDict
 
-  env.registerLib(envStringHelpers);
+  if (env.registerLib) env.registerLib(envStringHelpers);
 
   function formatStringFromDict(text, dict, depth) {
     // formatStringFromDict("%(a)s %(b)j %(c)r", {a: "a", b: "b", c: "%(a)s"}) -> 'a "b" a'

@@ -9,7 +9,7 @@
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
-  env.registerLib(envSvg);
+  if (env.registerLib) env.registerLib(envSvg);
 
   env.findLinksFromSvgDom = function (svgDom) {
     // XXX add parameters to retrieve namespaces too ?

@@ -651,7 +651,7 @@ function checkpw(plaintext, hashed, callback, progress) {
     };
   }
   // password_to_bytes can be replaced by encodeTextToUtf8ByteArray
-  env.registerLib(envBcrypt);
+  if (env.registerLib) env.registerLib(envBcrypt);
   env.bcryptGenerateSalt = gensalt;
   env.bcryptHashPassword = wrapBcryptAsyncMethod(hashpw);
   env.bcryptCheckPassword = wrapBcryptAsyncMethod(checkpw);

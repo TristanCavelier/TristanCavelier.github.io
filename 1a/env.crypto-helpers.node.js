@@ -10,7 +10,7 @@
 
   const crypto = require("crypto");
 
-  env.registerLib(envCryptoHelpers);
+  if (env.registerLib) env.registerLib(envCryptoHelpers);
 
   function wrapNodeJsAsyncMethod(fn) {  // move in node-helpers ?
     return function () {

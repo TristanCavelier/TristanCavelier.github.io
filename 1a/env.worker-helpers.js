@@ -14,7 +14,7 @@
   // dependencies: Worker, URL, Blob,
   //               async (env.newDeferred)
 
-  env.registerLib(envWorkerHelpers);
+  if (env.registerLib) env.registerLib(envWorkerHelpers);
 
   env.evalOnWorker = function (text, onMessage) {
     // API stability level: 1 - Experimental

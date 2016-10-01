@@ -51,7 +51,7 @@
   //
   //           env.xhr
 
-  env.registerLib(envHttp);
+  if (env.registerLib) env.registerLib(envHttp);
 
   env.parseHttpHeaders = function (text) {
     // text ->

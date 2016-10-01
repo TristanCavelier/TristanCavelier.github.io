@@ -16,7 +16,7 @@
   var fs = require("fs");
   function upperModulo(v, m) { return v + m - (v % m); }
 
-  env.registerLib(envRequire);
+  if (env.registerLib) env.registerLib(envRequire);
   env.requireCache = {
     requiring: {},
     lastUsed: {},

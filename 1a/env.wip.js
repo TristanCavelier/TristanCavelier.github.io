@@ -9,7 +9,7 @@
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
-  env.registerLib(envDev);
+  if (env.registerLib) env.registerLib(envDev);
 
   /*
 

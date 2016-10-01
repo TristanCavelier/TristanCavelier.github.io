@@ -20,7 +20,7 @@
   //           env.decodeUtf8BytesToString,
   //           env.strictDecodeUtf8BytesToString
 
-  env.registerLib(envUnicode);
+  if (env.registerLib) env.registerLib(envUnicode);
 
   // https://en.wikipedia.org/wiki/UTF-8
   // http://stackoverflow.com/questions/13235091/extract-the-first-letter-of-a-utf-8-string-with-lua#13238257

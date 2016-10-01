@@ -13,7 +13,7 @@
   //               string-helpers (env.formatStringFromDict),
   //               crypto-helpers (env.randomBytes)
 
-  env.registerLib(envFsHelpers);
+  if (env.registerLib) env.registerLib(envFsHelpers);
 
   const fs = require("fs"),
         filepath = require("path"),

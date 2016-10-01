@@ -11,7 +11,7 @@
 
   // dependency: env.setImmediate
 
-  env.registerLib(envTmp);
+  if (env.registerLib) env.registerLib(envTmp);
 
   env.TMP3ChanPromise = (function () {
 

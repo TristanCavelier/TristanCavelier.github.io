@@ -14,7 +14,7 @@
   //           env.findLinksFrom{,Html}Dom,
   //           env.makeElement, env.insertNodeAfter, env.replaceNode
 
-  env.registerLib(envDomHelpers);
+  if (env.registerLib) env.registerLib(envDomHelpers);
 
   env.parseHtmlElements = function (text) {
     // Usage:

@@ -9,7 +9,7 @@
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
-  env.registerLib(envStreamChannels);
+  if (env.registerLib) env.registerLib(envStreamChannels);
 
   var CLOSED_ERROR = env.Channel.CLOSED_ERROR;
   function ReadableStreamChannel(rs) {

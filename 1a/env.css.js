@@ -12,7 +12,7 @@
   // dependency: regexp (env.partitionStringToObject)
   // provides: env.parseCssForUrl
 
-  env.registerLib(envCss);
+  if (env.registerLib) env.registerLib(envCss);
 
   //env.findCssLinks = function (text) {  // move to env.css.js ?
   //  var a = partition(text, /\/\*(?:[^\*]|\*[^\/])*\*\//g), l = a.length, i, links = [];

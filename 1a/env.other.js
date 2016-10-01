@@ -14,7 +14,7 @@
   //   3 - Locked (blue)
   // If no level is mentioned = 1 - Experimental
 
-  env.registerLib(envOther);
+  if (env.registerLib) env.registerLib(envOther);
 
   env.lineDiff = function (text1, text2, parsedLineListener) {
     function rec(matrix, a1, a2, x, y, parsedLineListener) {
