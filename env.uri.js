@@ -2,7 +2,7 @@
 (function envUri(env) {
   "use strict";
 
-  /*! env.uri.js Version 1.0.1
+  /*! env.uri.js Version 1.0.2
 
       Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
@@ -32,7 +32,7 @@
   //           env.resolveUrlPathname,
   //           env.resolveUrl
 
-  env.registerLib(envUri);
+  if (env.registerLib) env.registerLib(envUri);
 
   // uriComponentEncodeCharsetStringRegExp = "[a-zA-Z0-9\\-_\\.!~\\*'\\(\\);,/\\?:@&=\\+\\$]";
   // uriEncodeCharsetStringRegExp = "[a-zA-Z0-9\\-_\\.!~\\*'\\(\\)]";

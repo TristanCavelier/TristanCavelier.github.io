@@ -2,7 +2,7 @@
 (function envAsync(env) {
   "use strict";
 
-  /*! Version 1.0.1
+  /*! Version 1.0.2
 
       Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
@@ -16,7 +16,7 @@
   // provides: env.setTimeout, env.clearTimeout, env.setImmediate,
   //           env.{,new}Promise, env.{,new}Deferred
 
-  env.registerLib(envAsync);
+  if (env.registerLib) env.registerLib(envAsync);
   env.setTimeout = setTimeout.bind(null);
   env.clearTimeout = clearTimeout.bind(null);
 

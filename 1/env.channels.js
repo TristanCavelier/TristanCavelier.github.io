@@ -2,7 +2,7 @@
 (function envChannels(env) {
   "use strict";
 
-  /*! env.channels.js Version 1.0.0
+  /*! env.channels.js Version 1.0.1
 
       Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
@@ -15,7 +15,7 @@
   // provides: env.{,new}Channel
   // - A Channel is like a `chan` in go.
 
-  env.registerLib(envChannels);
+  if (env.registerLib) env.registerLib(envChannels);
 
   var wm = typeof WeakMap === "function" ? new WeakMap() : {get: function (a) { return a; }, set: function () { return; }};
 

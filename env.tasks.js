@@ -2,7 +2,7 @@
 (function envTasks(env) {
   "use strict";
 
-  /*! Version 1.0.0
+  /*! Version 1.0.1
 
       Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
@@ -15,7 +15,7 @@
   //                      env.newPromise, env.newDeferred)
   // provides: env.{,new}Task, env.{,new}TaskThen, env.{,new}QuickTask
 
-  env.registerLib(envTasks);
+  if (env.registerLib) env.registerLib(envTasks);
 
   var wm = typeof WeakMap === "function" ? new WeakMap() : {get: function (a) { return a; }, set: function () { return; }};
 

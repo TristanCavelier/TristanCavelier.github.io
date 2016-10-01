@@ -2,7 +2,7 @@
 (function envEventManagers(env) {
   "use strict";
 
-  /*! env.eventmanagers.js Version 1.0.0
+  /*! env.eventmanagers.js Version 1.0.1
 
       Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
@@ -15,7 +15,7 @@
   // - Force to have private listeners like in html5 EventTarget objects.
   // - `dispatchEvent` is synchronous function, but it can be called like this: `setTimeout(em.dispatchEvent.bind(em), 0, event);`
 
-  env.registerLib(envEventManagers);
+  if (env.registerLib) env.registerLib(envEventManagers);
 
   var wm = typeof WeakMap === "function" ? new WeakMap() : {get: function (a) { return a; }, set: function () { return; }};
 
