@@ -34,8 +34,7 @@
       if (code <= 0xD7FF || (0xE000 <= code && code <= 0xFFFF)) codes.push(code);
       else if (0xD800 <= code && code <= 0xDFFF) codes.push(0xFFFD);
       else if (0x10FFFF < code) throw new Error("Invalid code point " + code);
-      else {
-        // surrogate pair
+      else {  // surrogate pair
         code -= 0x10000;
         codes.push(0xD800 + ((code >>> 10) & 0x3FF), 0xDC00 + (code & 0x3FF));
       }
@@ -57,20 +56,16 @@
     // Ex: var a = new Uint16Array(env.encodeCodePointsToUtf16([0xe9, ...]));
     // Ex: var s = String.fromCodePoint.apply(String, env.encodeCodePointsToUtf16([0xe9, ...]));
 
-    var n, code, codes,
-        read = params.read, write = params.write, error = params.error;
-    function defaultread(i) { return params[i]; }
-    function errorthrow(message) { throw new Error(message); }
-    if (read === undefined) read = defaultread;
+    var n, code, codes, read = params.read, write = params.write, error = params.error;
+    if (read === undefined) read = function (i) { return params[i]; };
     if (write === undefined) write = (codes = []).push.bind(codes);
-    if (error === undefined) error = errorthrow;
+    if (error === undefined) error = function (message) { throw new Error(message); };
 
     for (n = 0; (code = read(n)) >= 0; n += 1) {
       if (code <= 0xD7FF || (0xE000 <= code && code <= 0xFFFF)) write(code);
       else if (0xD800 <= code && code <= 0xDFFF) write(0xFFFD);  // XXX is this an error ?
       else if (0x10FFFF < code) error("invalid code point", n, code);
-      else {
-        // surrogate pair
+      else {  // surrogate pair
         code -= 0x10000;
         write(0xD800 + ((code >>> 10) & 0x3FF), 0xDC00 + (code & 0x3FF));
       }
@@ -89,13 +84,10 @@
     // params.error(message, index) (optional) function use on error
     //   during encoding.
 
-    var n, c, c2, cached, bytes,
-        read = params.read, write = params.write, error = params.error;
-    function defaultread(i) { return params[i]; }
-    function errorwrite() { write(0xef, 0xbf, 0xbd); }
-    if (read === undefined) read = defaultread;
+    var n, c, c2, cached, bytes, read = params.read, write = params.write, error = params.error;
+    if (read === undefined) read = function (i) { return params[i]; };
     if (write === undefined) write = (bytes = []).push.bind(bytes);
-    if (error === undefined) error = errorwrite;
+    if (error === undefined) error = function () { write(0xef, 0xbf, 0xbd); };
 
     for (n = 0; (c = cached ? (cached = false) || c2 : read(n)) >= 0; n += 1) {
       if (c <= 0x7F) write(c);
@@ -152,11 +144,9 @@
     // XXX http://www.unicode.org/faq/utf_bom.html
     var n = 0, ci, code, codes, cache = [],
         read = params.read, write = params.write, error = params.error;
-    function defaultread(i) { return params[i]; }
-    function errorwrite() { write(65533); }
-    if (read === undefined) read = defaultread;
+    if (read === undefined) read = function (i) { return params[i]; };
     if (write === undefined) write = (codes = []).push.bind(codes);
-    if (error === undefined) error = errorwrite;
+    if (error === undefined) error = function () { write(65533); };
 
     for (; (code = cache.length ? cache.shift() : read(n)) >= 0; n += 1) {
       if (code <= 0x7F)
