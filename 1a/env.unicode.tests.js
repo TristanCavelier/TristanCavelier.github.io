@@ -67,11 +67,21 @@
     while (i++ < length) r.push(parseInt(Math.random() * 65536, 10));
     return String.fromCharCode.apply(String, r);
   }
+  function textToCodePoints(text) {
+    var codes = [], i = 0, c;
+    while (i < text.length) {
+      c = text.codePointAt(i);
+      if (c < 0x10000) i += 1;
+      else i += 2;
+      codes.push(c);
+    }
+    return codes;
+  }
 
   function testSoftDecodeUtf8BytesToString(bytes) {
     nativeSoftDecodeUtf8BytesToText(bytes, function (err, text) {
-      test("unicode " + bytesToJs(bytes), 300, [text], function (res, end) {
-        res.push(env.decodeUtf8BytesToString(bytes));
+      test("unicode " + bytesToJs(bytes), 300, textToCodePoints(text), function (res, end) {
+        res.push.apply(res, env.decodeUtf8(bytes));
         end();
       });
     });
@@ -105,6 +115,25 @@
   testSoftDecodeUtf8BytesToString([0xc0,0x9d]);
   testSoftDecodeUtf8BytesToString([0xc1,0x98]);
   testSoftDecodeUtf8BytesToString([0xf6,0x84,0x93,0xb6]);
+
+  // 0xe1-0xf3 0x80-0xbf
+  testSoftDecodeUtf8BytesToString([0xe1, 0x80]);
+  testSoftDecodeUtf8BytesToString([0xf3, 0xbf]);
+
+  // 0xe0 0x80-0x9f 0x80-0xbf
+  testSoftDecodeUtf8BytesToString([0xe0,0x80,0x80]);
+  testSoftDecodeUtf8BytesToString([0xe0,0x9f,0xbf]);
+  // 0xed 0xa0-0xbf 0x80-0xbf
+  testSoftDecodeUtf8BytesToString([0xed,0xa0,0x80]);
+  testSoftDecodeUtf8BytesToString([0xed,0xbf,0xbf]);
+
+  testSoftDecodeUtf8BytesToString([0xed,0x80,0x80]);
+  testSoftDecodeUtf8BytesToString([0xed,0x9f,0xbf]);
+  testSoftDecodeUtf8BytesToString([0xe0,0xa0,0x80]);
+  testSoftDecodeUtf8BytesToString([0xe0,0xbf,0xbf]);
+
+  testSoftDecodeUtf8BytesToString([0xee,0x97,0xa8]);
+
   //testSoftDecodeUtf8BytesToString(randBytes(1));
   //testSoftDecodeUtf8BytesToString(randBytes(2));
   //testSoftDecodeUtf8BytesToString(randBytes(3));

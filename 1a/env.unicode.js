@@ -12,19 +12,24 @@
       http://www.wtfpl.net/ for more details. */
 
   // provides: env.encodeCodePointToString,
+  //
+  //           env.codePointsToUtf16EncoderAlgorithm,
   //           env.encodeCodePointsToUtf16,
+  //
+  //           env.utf16ToUtf8EncoderAlgorithm,
   //           env.encodeUtf16ToUtf8,
   //           env.encodeStringToUtf8Bytes,
-  //           env.strictEncodeStringToUtf8Bytes,
+  //
+  //           env.utf8DecoderAlgorithm,
   //           env.decodeUtf8,
-  //           env.decodeUtf8BytesToString,
-  //           env.strictDecodeUtf8BytesToString
+  //           env.decodeUtf8BytesToString
 
   if (env.registerLib) env.registerLib(envUnicode);
 
   // https://en.wikipedia.org/wiki/UTF-8
   // http://stackoverflow.com/questions/13235091/extract-the-first-letter-of-a-utf-8-string-with-lua#13238257
   // http://stackoverflow.com/questions/23502153/utf-8-encoding-algorithm-vs-utf-16-algorithm#23502707
+  // http://www.unicode.org/faq/utf_bom.html
 
   if (typeof String.fromCodePoint === "function") env.encodeCodePointToString = String.fromCodePoint;
   else env.encodeCodePointToString = function () {
@@ -42,150 +47,152 @@
     return String.fromCharCode.apply(String, codes);
   };
 
-  env.encodeCodePointsToUtf16 = function (params) {
-    // params.read(index) (optional) function that returns a code point
-    //   (uint32), `index` is the current position to read,
-    //   it never reads the same index twice. If `read` is not set,
-    //   `params` is considered as an array of code point (uint32).
-    // params.write(codes...) (optional) function use to push
-    //   utf16 uint16, if `write` is not set, the main function
-    //   returns an array of uint16.
-    // params.error(message, index, code) (optional) function use on
-    //   error during encoding.
+  env.codePointsToUtf16EncoderAlgorithm = function (o) {
+    // o.get(index) - called to get the next code point to encode.
+    //     `index` is a counter that increments every time `get` is called.
+    // o.write(codes) - called to push the encoded uint16
+    //     `codes` is an array of uint16.
+    // o.invalidCodePointError({index}) - called on invalid code point
+    // o.codePointOutOfUnicodeRangeError({index}) - called on invalid code point
 
-    // Ex: var a = new Uint16Array(env.encodeCodePointsToUtf16([0xe9, ...]));
-    // Ex: var s = String.fromCodePoint.apply(String, env.encodeCodePointsToUtf16([0xe9, ...]));
-
-    var n, code, codes, read = params.read, write = params.write, error = params.error;
-    if (read === undefined) read = function (i) { return params[i]; };
-    if (write === undefined) write = (codes = []).push.bind(codes);
-    if (error === undefined) error = function (message) { throw new Error(message); };
-
-    for (n = 0; (code = read(n)) >= 0; n += 1) {
-      if (code <= 0xD7FF || (0xE000 <= code && code <= 0xFFFF)) write(code);
-      else if (0xD800 <= code && code <= 0xDFFF) write(0xFFFD);  // XXX is this an error ?
-      else if (0x10FFFF < code) error("invalid code point", n, code);
+    var n, code;
+    for (n = 0; (code = o.get(n)) >= 0; n += 1) {
+      if (code <= 0xD7FF || (0xE000 <= code && code <= 0xFFFF)) o.write([code]);
+      else if (0xD800 <= code && code <= 0xDFFF) o.invalidCodePointError({index: n});
+      else if (0x10FFFF < code) o.codePointOutOfUnicodeRangeError({index: n});
       else {  // surrogate pair
         code -= 0x10000;
-        write(0xD800 + ((code >>> 10) & 0x3FF), 0xDC00 + (code & 0x3FF));
+        o.write([0xD800 + ((code >>> 10) & 0x3FF), 0xDC00 + (code & 0x3FF)]);
       }
     }
-    return codes;
+  };
+  env.encodeCodePointsToUtf16 = function (codePoints) {
+    var r = [];
+    function err() { r.push(0xFFFD); }
+    env.codePointsToUtf16EncoderAlgorithm({
+      get: function (i) { return codePoints[i]; },
+      write: r.push.apply.bind(r.push, r),
+      invalidCodePointError: err,
+      codePointOutOfUnicodeRangeError: err
+    });
+    return r;
   };
 
-  env.encodeUtf16ToUtf8 = function (params) {
-    // params.read(index) (optional) function that returns an uint16,
-    //   `index` is the current position to read,
-    //   it never reads the same index twice. If `read` is not set,
-    //   `params` is considered as an array of uint16.
-    // params.write(bytes...) (optional) function use to push
-    //   utf8 uint8, if `write` is not set, the main function
-    //   returns an array of uint8.
-    // params.error(message, index) (optional) function use on error
-    //   during encoding.
+  env.utf16ToUtf8EncoderAlgorithm = function (o) {
+    // o.get(index) - called to get the next uint16 to encode.
+    //     `index` is a counter that increments every time `get` is called.
+    // o.write(codes) - called to push the encoded uint8
+    //     `codes` is an array of uint8.
+    // o.incompleteSurrogatePairError({index}) - called on incomplete surrogate pair
+    // o.invalidSurrogatePairError({index}) - called on invalid surrogate pair
+    // o.invalidCodeError({index}) - called on invalid uint16
 
-    var n, c, c2, cached, bytes, read = params.read, write = params.write, error = params.error;
-    if (read === undefined) read = function (i) { return params[i]; };
-    if (write === undefined) write = (bytes = []).push.bind(bytes);
-    if (error === undefined) error = function () { write(0xef, 0xbf, 0xbd); };
-
-    for (n = 0; (c = cached ? (cached = false) || c2 : read(n)) >= 0; n += 1) {
-      if (c <= 0x7F) write(c);
-      else if (c <= 0x7FF) write((c >> 6) | 0xc0, (c & 0x3f) | 0x80);
+    var n, c, c2, cached;
+    for (n = 0; (c = cached ? (cached = false) || c2 : o.get(n)) >= 0; n += 1) {
+      if (c <= 0x7F) o.write([c]);
+      else if (c <= 0x7FF) o.write([(c >> 6) | 0xc0, (c & 0x3f) | 0x80]);
       else if (0xd800 <= c && c <= 0xdbff) {
-        c2 = read(n + 1);
+        c2 = o.get(n + 1);
         cached = true;
-        if (!(c2 >= 0)) { error("incomplete surrogate pair", n); break; }
-        if (c2 < 0xdc00 || c2 > 0xdfff) error("invalid surrogate pair", n);
+        // break; is not necessary in this algorithm
+        if (!(c2 >= 0)) { o.incompleteSurrogatePairError({index: n}); break; }
+        else if (c2 < 0xdc00 || c2 > 0xdfff) o.invalidSurrogatePairError({index: n});
         else {
           c = ((c - 0xd800) << 10) + (c2 - 0xdc00) + 0x10000;
-          write(
+          o.write([
             (c >> 18) | 0xf0,
             ((c >> 12) & 0x3f) | 0x80,
             ((c >> 6) & 0x3f) | 0x80,
             (c & 0x3f) | 0x80
-          );
+          ]);
           n += 1;
           cached = false;
         }
-      } else if (0xdc00 <= c && c <= 0xdfff) error("invalid code", n);
-      else
-        write(
-          (c >> 12) | 0xe0,
-          ((c >> 6) & 0x3f) | 0x80,
-          (c & 0x3f) | 0x80
-        );
+      } else if (0xdc00 <= c && c <= 0xdfff) o.invalidCodeError({index: n});
+      else o.write([
+        (c >> 12) | 0xe0,
+        ((c >> 6) & 0x3f) | 0x80,
+        (c & 0x3f) | 0x80
+      ]);
     }
-    return bytes;
+  };
+  env.encodeUtf16ToUtf8 = function (codes) {
+    var r = [];
+    function err() { r.push(0xEF, 0xBF, 0xBD); }
+    env.utf16ToUtf8EncoderAlgorithm({
+      get: function (i) { return codes[i]; },
+      write: r.push.apply.bind(r.push, r),
+      incompleteSurrogatePairError: err,
+      invalidSurrogatePairError: err,
+      invalidCodeError: err
+    });
+    return r;
   };
   env.encodeStringToUtf8Bytes = function (text) {
-    return env.encodeUtf16ToUtf8({read: text.charCodeAt.bind(text)});
+    var r = [];
+    function err() { r.push(0xEF, 0xBF, 0xBD); }
+    env.utf16ToUtf8EncoderAlgorithm({
+      get: text.charCodeAt.bind(text),
+      write: r.push.apply.bind(r.push, r),
+      incompleteSurrogatePairError: err,
+      invalidSurrogatePairError: err,
+      invalidCodeError: err
+    });
+    return r;
   };
-  env.strictEncodeStringToUtf8Bytes = function (text) {
-    return env.encodeUtf16ToUtf8({read: text.charCodeAt.bind(text), error: function (reason, index) {
-      var e = new Error(reason);
-      e.index = index;
-      throw e;
-    }});
-  };
 
+  env.utf8DecoderAlgorithm = function (o) {
+    // o.get(index) - called to get the next uint8 to decode.
+    //     `index` is a counter that increments every time `get` is called.
+    // o.write(codes) - called to push the encoded code point
+    //     `codes` is an array of code points.
+    // o.invalidStartByteError({index}) - called on invalid start byte
+    // o.invalidContinuationByteError({index, from, to}) - called on invalid continuation byte
+    // o.unexpectedEndOfDataError({index, from, to}) - called on unexpected on of data
 
-  env.decodeUtf8 = function (params) {
-    // params.read(index) (optional) function that returns an uint8,
-    //   `index` is the current position to read,
-    //   it never reads the same index twice. If `read` is not set,
-    //   `params` is considered as an array of byte.
-    // params.write(codepoints...) (optional) function use to push
-    //   code points (uint32), if `write` is not set, the main function
-    //   returns an array of code points.
-    // params.error(message, index) (optional) function use on
-    //   error during encoding.
-
-    // XXX http://www.unicode.org/faq/utf_bom.html
-    var n = 0, ci, code, codes, cache = [],
-        read = params.read, write = params.write, error = params.error;
-    if (read === undefined) read = function (i) { return params[i]; };
-    if (write === undefined) write = (codes = []).push.bind(codes);
-    if (error === undefined) error = function () { write(65533); };
-
-    for (; (code = cache.length ? cache.shift() : read(n)) >= 0; n += 1) {
+    var n = 0, ci, code, cache = [];
+    for (; (code = cache.length ? cache.shift() : o.get(n)) >= 0; n += 1) {
       if (code <= 0x7F)
-        write(code);
+        o.write([code]);
       else if ((0xE0 & code) === 0xC0) {
-        if (code < 0xC2) error("invalid start byte", n);
-        else if (!((ci = cache.length ? cache[0] : (cache[0] = read(n + 1))) >= 0)) error("unexpected end of data", n);
-        else if ((code = ((0xC0 & ci) === 0x80 ? (code << 6) | (ci & 0x3F) : null)) === null) error("invalid continuation byte", n);
-        else { write(code & 0x7FF); n += 1; cache.shift(); }
+        if (code < 0xC2) o.invalidStartByteError({index: n});
+        else if (!((ci = cache.length ? cache[0] : (cache[0] = o.get(n + 1))) >= 0)) o.unexpectedEndOfDataError({index: n + 1, from: n, to: n + 2});
+        else if ((code = ((0xC0 & ci) === 0x80 ? (code << 6) | (ci & 0x3F) : null)) === null) o.invalidContinuationByteError({index: n + 1, from: n, to: n + 2});
+        else { o.write([code & 0x7FF]); n += 1; cache.shift(); }
       } else if ((0xF0 & code) === 0xE0) {
-        if (!((ci = cache.length ? cache[0] : (cache[0] = read(n + 1))) >= 0)) error("unexpected end of data", n);
-        else if ((code = ((0xC0 & ci) === 0x80 ? (code << 6) | (ci & 0x3F) : null)) === null) error("invalid continuation byte", n);
-        else if (!((ci = cache.length > 1 ? cache[1] : (cache[1] = read(n + 2))) >= 0)) error("unexpected end of data", n);
-        else if ((code = ((0xC0 & ci) === 0x80 ? (code << 6) | (ci & 0x3F) : null)) === null) error("invalid continuation byte", n);
-        else { write(code & 0xFFFF); n += 2; cache.splice(0, 2); }
+        if (!((ci = cache.length ? cache[0] : (cache[0] = o.get(n + 1))) >= 0)) o.unexpectedEndOfDataError({index: n + 1, from: n, to: n + 3});
+        else if ((code = ((0xC0 & ci) === 0x80 ? (code << 6) | (ci & 0x3F) : null)) === null) o.invalidContinuationByteError({index: n + 1, from: n, to: n + 3});
+        else if (!((ci = cache.length > 1 ? cache[1] : (cache[1] = o.get(n + 2))) >= 0)) o.unexpectedEndOfDataError({index: n + 2, from: n, to: n + 3});
+        else if ((code = ((0xC0 & ci) === 0x80 ? (code << 6) | (ci & 0x3F) : null)) === null) o.invalidContinuationByteError({index: n + 2, from: n, to: n + 3});
+        //else if ((c === 0xE0 && 0x80 <= cache[0] && cache[0] <= 0x9F && 0x80 <= cache[1] && cache[1] <= 0xBF) || (c === 0xED && 0xA0 <= cache[0] && cache[0] <= 0xBF && 0x80 <= cache[1] && cache[1] <= 0xBF)) o.invalidContinuationByteError({index: n + 2, from: n, to: n + 3});
+        else if (((code = code & 0xFFFF) <= 0x7FF) || (0xD800 <= code && code <= 0xDFFF)) o.invalidContinuationByteError({index: n + 2, from: n, to: n + 3});
+        else { o.write([code]); n += 2; cache.splice(0, 2); }
       } else if ((0xF8 & code) === 0xF0) {
-        if (code >= 0xF5) error("invalid start byte", n);
-        else if (!((ci = cache.length ? cache[0] : (cache[0] = read(n + 1))) >= 0)) error("unexpected end of data", n);
-        else if ((code = ((0xC0 & ci) === 0x80 ? (code << 6) | (ci & 0x3F) : null)) === null) error("invalid continuation byte", n);
-        else if (!((ci = cache.length > 1 ? cache[1] : (cache[1] = read(n + 2))) >= 0)) error("unexpected end of data", n);
-        else if ((code = ((0xC0 & ci) === 0x80 ? (code << 6) | (ci & 0x3F) : null)) === null) error("invalid continuation byte", n);
-        else if (!((ci = cache.length > 2 ? cache[2] : (cache[2] = read(n + 3))) >= 0)) error("unexpected end of data", n);
-        else if ((code = ((0xC0 & ci) === 0x80 ? (code << 6) | (ci & 0x3F) : null)) === null) error("invalid continuation byte", n);
-        else { write(code & 0x1FFFFF); n += 3; cache.splice(0, 3); }
-      } else error("invalid start byte", n);
+        if (code >= 0xF5) o.invalidStartByteError({index: n});
+        else if (!((ci = cache.length ? cache[0] : (cache[0] = o.get(n + 1))) >= 0)) o.unexpectedEndOfDataError({index: n + 1, from: n, to: n + 4});
+        else if ((code = ((0xC0 & ci) === 0x80 ? (code << 6) | (ci & 0x3F) : null)) === null) o.invalidContinuationByteError({index: n + 1, from: n, to: n + 4});
+        else if (!((ci = cache.length > 1 ? cache[1] : (cache[1] = o.get(n + 2))) >= 0)) o.unexpectedEndOfDataError({index: n + 2, from: n, to: n + 4});
+        else if ((code = ((0xC0 & ci) === 0x80 ? (code << 6) | (ci & 0x3F) : null)) === null) o.invalidContinuationByteError({index: n + 2, from: n, to: n + 4});
+        else if (!((ci = cache.length > 2 ? cache[2] : (cache[2] = o.get(n + 3))) >= 0)) o.unexpectedEndOfDataError({index: n + 3, from: n, to: n + 4});
+        else if ((code = ((0xC0 & ci) === 0x80 ? (code << 6) | (ci & 0x3F) : null)) === null) o.invalidContinuationByteError({index: n + 3, from: n, to: n + 4});
+        else { o.write([code & 0x1FFFFF]); n += 3; cache.splice(0, 3); }
+      } else o.invalidStartByteError({index: n});
     }
-    return codes;
+  };
+  env.decodeUtf8 = function (bytes) {
+    var r = [];
+    function err() { r.push(0xFFFD); }
+    env.utf8DecoderAlgorithm({
+      get: function (i) { return bytes[i]; },
+      write: r.push.apply.bind(r.push, r),
+      invalidStartByteError: err,
+      invalidContinuationByteError: err,
+      unexpectedEndOfDataError: err
+    });
+    return r;
   };
   env.decodeUtf8BytesToString = function (bytes) {
-    return env.encodeCodePointToString.apply(env, env.decodeUtf8({read: function (i) { return bytes[i]; }}));
-  };
-  env.strictDecodeUtf8BytesToString = function (bytes) {
-    return env.encodeCodePointToString.apply(env, env.decodeUtf8({read: function (i) {
-      return bytes[i];
-    }, error: function (message, index) {
-      var e = new Error(message);
-      e.index = index;
-      throw e;
-    }}));
+    return env.encodeCodePointToString.apply(env, env.decodeUtf8(bytes));
   };
 
 }(this.env));
