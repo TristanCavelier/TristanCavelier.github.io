@@ -11,11 +11,12 @@
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
-  if (env.registerLib) env.registerLib(envStreamIo);
+  // dependencies:
+  //   env.newDeferred (async)
+  //   env.QuickTask.exec (tasks)
+  //   env.Channel.CLOSED_ERROR (channels)
 
-  // dependencies: async (env.newDeferred),
-  //               tasks (env.QuickTask.exec),
-  //               channels (env.Channel.CLOSED_ERROR)
+  if (env.registerLib) env.registerLib(envStreamIo);
 
   const task = gf => env.QuickTask.exec(gf),
         taskify = gf => {

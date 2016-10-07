@@ -11,45 +11,47 @@
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
-  // dependencies: XMLHttpRequest,
-  //               async (env.newDeferred),
-  //               regexp (env.partitionStringToObject)
-  // provides: env.headerParamNameStringRegExp,
-  //           env.headerParamUnquotedValueStringRegExp,
-  //           env.headerParamQuotedValueStringRegExp,
-  //           env.headerParamValueStringRegExp,
-  //           env.headerParamStringParserRegExp,
-  //           env.headerParamsStringRegExp,
-  //           env.headerParamsMatcherRegExp,
+  // dependencies:
+  //   XMLHttpRequest
+  //   env.newDeferred (async)
+  //   env.partitionStringToObject (regexp)
+  // provides:
+  //   env.headerParamNameStringRegExp
+  //   env.headerParamUnquotedValueStringRegExp
+  //   env.headerParamQuotedValueStringRegExp
+  //   env.headerParamValueStringRegExp
+  //   env.headerParamStringParserRegExp
+  //   env.headerParamsStringRegExp
+  //   env.headerParamsMatcherRegExp
   //
-  //           env.parseHeaderRawParams,
-  //           env.parseHttpHeaders,
-  //           env.stripHeaderParamName,
-  //           env.stripHeaderParamValue,
-  //           env.validateHeaderParamName,
-  //           env.sanitizeHeaderParamValue,
-  //           env.headerRawParamsToDictList,
-  //           env.remapHeaderRawParamsToStrippedValues,
-  //           env.parseHeaderParams,
-  //           env.formatHeaderParamsToString,
+  //   env.parseHeaderRawParams
+  //   env.parseHttpHeaders
+  //   env.stripHeaderParamName
+  //   env.stripHeaderParamValue
+  //   env.validateHeaderParamName
+  //   env.sanitizeHeaderParamValue
+  //   env.headerRawParamsToDictList
+  //   env.remapHeaderRawParamsToStrippedValues
+  //   env.parseHeaderParams
+  //   env.formatHeaderParamsToString
   //
-  //           env.metadataNameStringRegExp,
-  //           env.metadataUnquotedValueStringRegExp,
-  //           env.metadataQuotedValueStringRegExp,
-  //           env.metadataValueStringRegExp,
-  //           env.metadataStringParserRegExp,
-  //           env.metadataListStringRegExp,
-  //           env.metadataListMatcherRegExp,
+  //   env.metadataNameStringRegExp
+  //   env.metadataUnquotedValueStringRegExp
+  //   env.metadataQuotedValueStringRegExp
+  //   env.metadataValueStringRegExp
+  //   env.metadataStringParserRegExp
+  //   env.metadataListStringRegExp
+  //   env.metadataListMatcherRegExp
   //
-  //           env.parseRawMetadataList,
-  //           env.sanitizeMetadataValue,
-  //           env.deepRemapRawMetadataListToStrippedValues,
-  //           env.parseMetadataList,
-  //           env.formatMetadataListToDict,
-  //           env.formatMetadataListToString,
-  //           env.formatMetadataToString,
+  //   env.parseRawMetadataList
+  //   env.sanitizeMetadataValue
+  //   env.deepRemapRawMetadataListToStrippedValues
+  //   env.parseMetadataList
+  //   env.formatMetadataListToDict
+  //   env.formatMetadataListToString
+  //   env.formatMetadataToString
   //
-  //           env.xhr
+  //   env.xhr
 
   if (env.registerLib) env.registerLib(envHttp);
 

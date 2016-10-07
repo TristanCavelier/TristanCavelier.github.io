@@ -9,10 +9,15 @@
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
-  // dependencies: async (env.setTimeout),
-  // provides: env.parseHtmlElements, env.{f,asyncF}itTextareaToTextHeightListener,
-  //           env.findLinksFrom{,Html}Dom,
-  //           env.makeElement, env.insertNodeAfter, env.replaceNode
+  // dependencies:
+  //   env.setTimeout (async)
+  // provides:
+  //   env.parseHtmlElements
+  //   env.{f,asyncF}itTextareaToTextHeightListener
+  //   env.findLinksFrom{,Html}Dom
+  //   env.makeElement
+  //   env.insertNodeAfter
+  //   env.replaceNode
 
   if (env.registerLib) env.registerLib(envDomHelpers);
 
@@ -121,6 +126,15 @@
     return result;
   }
 
+  //XXX function makeElement(tag, attrs, content) {
+  //  // makeElement("a", {href: "#"}, ["click here"]);
+  //  // makeElement("div", undefined, "<p>inner html</p>");
+  //  var e = document.createElement(tag);
+  //  Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+  //  if (typeof content === "string") e.innerHTML = content;
+  //  else (content || []).forEach(function (o) { e.appendChild(typeof o === "string" ? document.createTextNode(o) : o); });
+  //  return e;
+  //}
   env.makeElement = function (tagName, attributes, children, callback) {
     // makeElement("button", [["type", "submit"], ["name", "search"]], ["textNode", element], function (button) { button.onclick = fn; })
 

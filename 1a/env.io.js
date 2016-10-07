@@ -11,7 +11,16 @@
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
-  // dependency: tasks (env.QuickTask.exec)
+  // dependency:
+  //   env.QuickTask.exec (tasks)
+  // provides:
+  //   env.BufferWriter
+  //   env.ArrayWriter
+  //   env.ArrayReader
+  //   env.StringReader
+  //   env.MultiReader
+  //   env.MultiWriter
+  //   env.TeeReader
 
   if (env.registerLib) env.registerLib(envIo);
 

@@ -9,8 +9,10 @@
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
-  // dependency: regexp (env.partitionStringToObject)
-  // provides: env.parseCssForUrl
+  // dependencies:
+  //   env.partitionStringToObject (regexp)
+  // provides:
+  //   env.parseCssForUrl
 
   if (env.registerLib) env.registerLib(envCss);
 

@@ -11,8 +11,11 @@
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
-  // dependencies: Worker, URL, Blob,
-  //               async (env.newDeferred)
+  // dependencies:
+  //   Worker
+  //   URL.createObjectURL
+  //   Blob
+  //   env.newDeferred (async)
 
   if (env.registerLib) env.registerLib(envWorkerHelpers);
 

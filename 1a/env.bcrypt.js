@@ -1,9 +1,18 @@
-// https://github.com/nevins-b/javascript-bcrypt/
-// https://raw.githubusercontent.com/nevins-b/javascript-bcrypt/master/bCrypt.js
-// Version : 68835d0722107bccc1754be78b3c45c844b09d08 (2016-06-02)
-// Some modifications made to fit "use strict".
 (function envBcrypt(env) {
   "use strict";
+  // https://github.com/nevins-b/javascript-bcrypt/
+  // https://raw.githubusercontent.com/nevins-b/javascript-bcrypt/master/bCrypt.js
+  // Version : 68835d0722107bccc1754be78b3c45c844b09d08 (2016-06-02)
+  // Some modifications made to fit "use strict".
+
+  // dependencies:
+  //   crypto
+  //   env.Promise{,.resolve} (async)
+  // provides:
+  //   env.bcryptGenerateSalt
+  //   env.bcryptHashPassword
+  //   env.bcryptCheckPassword
+
 /* MIT License
 
 Copyright (c) 2016 Nevins Bartolomeo
