@@ -2,7 +2,7 @@
 (function envExporter(exportRoot, exportKey) {
   "use strict";
 
-  /*! env.js Version 1.0.0
+  /*! env.js Version 1.0.1
 
       Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
@@ -24,9 +24,9 @@
   env.getRegisteredLib = function () { return registeredLib.slice(); };
   env.toScript = function () {
     var i, l = registeredLib.length, a = new Array(l + 1);
-    a[0] = "(" + envExporter.toString() + "(this));"
-    for (i = 0; i < l; i += 1) a[i + 1] = "(" + registeredLib[i].toString() + "(env));"
-    return a.join("\n") + "\n";
+    a[0] = "(" + envExporter.toString() + "(this));\n"
+    for (i = 0; i < l; i += 1) a[i + 1] = "(" + registeredLib[i].toString() + "(this.env));\n"
+    return a.join("");
   };
   env.copyEnv = function () {
     var newEnv = envExporter(), l = registeredLib.length, i;
