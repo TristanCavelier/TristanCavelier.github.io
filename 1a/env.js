@@ -11,11 +11,17 @@
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
-  // provides: env.registerLib, env.getRegisteredLib, env.toScript, env.copyEnv, env.newEnv
+  // provides:
+  //   env
+  //   env.registerLib
+  //   env.getRegisteredLib
+  //   env.toScript
+  //   env.copyEnv
+  //   env.newEnv
 
   var env = {}, registeredLib = [];
-  if (typeof exportKey !== "string") exportKey = "env";
-  if (typeof exportRoot === "object" && exportRoot !== null) exportRoot[exportKey] = env;
+  if (exportKey === undefined) exportKey = "env";
+  if (exportRoot) exportRoot[exportKey] = env;
 
   env.registerLib = function (lib) {
     if (typeof lib !== "function") throw new Error("lib is not a function");
