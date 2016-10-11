@@ -28,6 +28,7 @@
   if (env.registerLib) env.registerLib(envUnicode);
 
   // https://en.wikipedia.org/wiki/UTF-8
+  // https://en.wikipedia.org/wiki/UTF-16
   // http://stackoverflow.com/questions/13235091/extract-the-first-letter-of-a-utf-8-string-with-lua#13238257
   // http://stackoverflow.com/questions/23502153/utf-8-encoding-algorithm-vs-utf-16-algorithm#23502707
   // http://www.unicode.org/faq/utf_bom.html
@@ -82,11 +83,13 @@
   env.utf16ToUtf8EncoderAlgorithm = function (o) {
     // o.get(index) - called to get the next uint16 to encode.
     //     `index` is a counter that increments every time `get` is called.
+    //     If `get` returns < 0, NaN, null or undefined the algo stops.
     // o.write(codes) - called to push the encoded uint8
     //     `codes` is an array of uint8.
-    // o.incompleteSurrogatePairError({index}) - called on incomplete surrogate pair
-    // o.invalidSurrogatePairError({index}) - called on invalid surrogate pair
-    // o.invalidCodeError({index}) - called on invalid uint16
+    // XXX use o.cache = []
+    // o.invalidStartCodeError({index}) - called on invalid surrogate start
+    // o.unexpectedEndOfDataError({index, from, to}) - called on incomplete surrogate pair
+    // o.invalidContinuationCodeError({index, from, to}) - called on invalid surrogate pair
 
     var n, c, c2, cached;
     for (n = 0; (c = cached ? (cached = false) || c2 : o.get(n)) >= 0; n += 1) {
@@ -96,9 +99,8 @@
         c2 = o.get(n + 1);
         cached = true;
         // break; is not necessary in this algorithm
-        if (!(c2 >= 0)) { o.incompleteSurrogatePairError({index: n}); break; }
-        else if (c2 < 0xdc00 || c2 > 0xdfff) o.invalidSurrogatePairError({index: n});
-        else {
+        if (!(c2 >= 0)) { o.unexpectedEndOfDataError({index: n + 1, from: n, to: n + 2}); break; }
+        else if (0xdc00 <= c2 && c2 <= 0xdfff) {
           c = ((c - 0xd800) << 10) + (c2 - 0xdc00) + 0x10000;
           o.write([
             (c >> 18) | 0xf0,
@@ -108,10 +110,10 @@
           ]);
           n += 1;
           cached = false;
-        }
-      } else if (0xdc00 <= c && c <= 0xdfff) o.invalidCodeError({index: n});
+        } else o.invalidContinuationCodeError({index: n + 1, from: n, to: n + 2});
+      } else if (0xdc00 <= c && c <= 0xdfff) o.invalidStartCodeError({index: n});
       else o.write([
-        (c >> 12) | 0xe0,
+        ((c >> 12) & 0xf) | 0xe0,
         ((c >> 6) & 0x3f) | 0x80,
         (c & 0x3f) | 0x80
       ]);
@@ -123,9 +125,9 @@
     env.utf16ToUtf8EncoderAlgorithm({
       get: function (i) { return codes[i]; },
       write: r.push.apply.bind(r.push, r),
-      incompleteSurrogatePairError: err,
-      invalidSurrogatePairError: err,
-      invalidCodeError: err
+      invalidStartCodeError: err,
+      unexpectedEndOfDataError: err,
+      invalidContinuationCodeError: err
     });
     return r;
   };
@@ -135,9 +137,9 @@
     env.utf16ToUtf8EncoderAlgorithm({
       get: text.charCodeAt.bind(text),
       write: r.push.apply.bind(r.push, r),
-      incompleteSurrogatePairError: err,
-      invalidSurrogatePairError: err,
-      invalidCodeError: err
+      invalidStartCodeError: err,
+      unexpectedEndOfDataError: err,
+      invalidContinuationCodeError: err
     });
     return r;
   };
@@ -147,6 +149,7 @@
     //     `index` is a counter that increments every time `get` is called.
     // o.write(codes) - called to push the encoded code point
     //     `codes` is an array of code points.
+    // XXX use o.cache = []
     // o.invalidStartByteError({index}) - called on invalid start byte
     // o.invalidContinuationByteError({index, from, to}) - called on invalid continuation byte
     // o.unexpectedEndOfDataError({index, from, to}) - called on unexpected on of data
