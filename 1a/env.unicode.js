@@ -51,30 +51,30 @@
   env.codePointsToUtf16EncoderAlgorithm = function (o) {
     // o.get(index) - called to get the next code point to encode.
     //     `index` is a counter that increments every time `get` is called.
+    //     If `get` returns < 0, NaN, null or undefined the algo stops.
     // o.write(codes) - called to push the encoded uint16
     //     `codes` is an array of uint16.
-    // o.invalidCodePointError({index}) - called on invalid code point
-    // o.codePointOutOfUnicodeRangeError({index}) - called on invalid code point
+    // o.reservedCodePointError({index}) - called if > U+D800 & < U+DFFF
+    // o.invalidCodePointError({index}) - called if > U+10FFFF
 
     var n, code;
     for (n = 0; (code = o.get(n)) >= 0; n += 1) {
-      if (code <= 0xD7FF || (0xE000 <= code && code <= 0xFFFF)) o.write([code]);
-      else if (0xD800 <= code && code <= 0xDFFF) o.invalidCodePointError({index: n});
-      else if (0x10FFFF < code) o.codePointOutOfUnicodeRangeError({index: n});
-      else {  // surrogate pair
+      if (code <= 0xD7FF) o.write([code]);
+      else if (code <= 0xDFFF) o.reservedCodePointError({index: n});
+      else if (code <= 0xFFFF) o.write([code]);
+      else if (code <= 0x10FFFF) {  // surrogate pair
         code -= 0x10000;
         o.write([0xD800 + ((code >>> 10) & 0x3FF), 0xDC00 + (code & 0x3FF)]);
-      }
+      } else o.invalidCodePointError({index: n});
     }
   };
   env.encodeCodePointsToUtf16 = function (codePoints) {
     var r = [];
-    function err() { r.push(0xFFFD); }
     env.codePointsToUtf16EncoderAlgorithm({
       get: function (i) { return codePoints[i]; },
       write: r.push.apply.bind(r.push, r),
-      invalidCodePointError: err,
-      codePointOutOfUnicodeRangeError: err
+      invalidCodePointError: function () { r.push(0xFFFD); },  // force encoding to work
+      reservedCodePointError: function (o) { r.push(codePoints[o.index]); }  // accept reserved code points (like in chrome).
     });
     return r;
   };
