@@ -151,30 +151,35 @@
     //     `codes` is an array of code points.
     // XXX use o.cache = []
     // o.invalidStartByteError({index}) - called on invalid start byte
-    // o.invalidContinuationByteError({index, from, to}) - called on invalid continuation byte
+    // o.overlongEncodingError({index, from, to}) - called on overlong byte sequence
+    //     if `overlongEncodingError` returns true, then the algorithm will continue
+    //     to decode the current code point.
     // o.unexpectedEndOfDataError({index, from, to}) - called on unexpected on of data
+    // o.invalidContinuationByteError({index, from, to}) - called on invalid continuation byte
 
-    var n = 0, ci, code, cache = [];
+    var n = 0, ci, c, code, cache = [];
     for (; (code = cache.length ? cache.shift() : o.get(n)) >= 0; n += 1) {
-      if (code <= 0x7F)
+      if ((c = code) <= 0x7F)
         o.write([code]);
       else if ((0xE0 & code) === 0xC0) {
-        if (code < 0xC2) o.invalidStartByteError({index: n});
+        if (code < 0xC2 && !o.overlongEncodingError({index: n, from: n, to: n + 2})) {}
         else if (!((ci = cache.length ? cache[0] : (cache[0] = o.get(n + 1))) >= 0)) o.unexpectedEndOfDataError({index: n + 1, from: n, to: n + 2});
         else if ((code = ((0xC0 & ci) === 0x80 ? (code << 6) | (ci & 0x3F) : null)) === null) o.invalidContinuationByteError({index: n + 1, from: n, to: n + 2});
         else { o.write([code & 0x7FF]); n += 1; cache.shift(); }
       } else if ((0xF0 & code) === 0xE0) {
         if (!((ci = cache.length ? cache[0] : (cache[0] = o.get(n + 1))) >= 0)) o.unexpectedEndOfDataError({index: n + 1, from: n, to: n + 3});
         else if ((code = ((0xC0 & ci) === 0x80 ? (code << 6) | (ci & 0x3F) : null)) === null) o.invalidContinuationByteError({index: n + 1, from: n, to: n + 3});
+        else if (c === 0xE0 && ci <= 0x9F && !o.overlongEncodingError({index: n + 1, from: n, to: n + 3})) {}
         else if (!((ci = cache.length > 1 ? cache[1] : (cache[1] = o.get(n + 2))) >= 0)) o.unexpectedEndOfDataError({index: n + 2, from: n, to: n + 3});
         else if ((code = ((0xC0 & ci) === 0x80 ? (code << 6) | (ci & 0x3F) : null)) === null) o.invalidContinuationByteError({index: n + 2, from: n, to: n + 3});
         //else if ((c === 0xE0 && 0x80 <= cache[0] && cache[0] <= 0x9F && 0x80 <= cache[1] && cache[1] <= 0xBF) || (c === 0xED && 0xA0 <= cache[0] && cache[0] <= 0xBF && 0x80 <= cache[1] && cache[1] <= 0xBF)) o.invalidContinuationByteError({index: n + 2, from: n, to: n + 3});
-        else if (((code = code & 0xFFFF) <= 0x7FF) || (0xD800 <= code && code <= 0xDFFF)) o.invalidContinuationByteError({index: n + 2, from: n, to: n + 3});
+        else if (0xD800 <= (code = code & 0xFFFF) && code <= 0xDFFF) o.invalidContinuationByteError({index: n + 2, from: n, to: n + 3});
         else { o.write([code]); n += 2; cache.splice(0, 2); }
       } else if ((0xF8 & code) === 0xF0) {
-        if (code >= 0xF5) o.invalidStartByteError({index: n});
+        if (code >= 0xF5) o.invalidStartByteError({index: n, from: n, to: n + 4});
         else if (!((ci = cache.length ? cache[0] : (cache[0] = o.get(n + 1))) >= 0)) o.unexpectedEndOfDataError({index: n + 1, from: n, to: n + 4});
         else if ((code = ((0xC0 & ci) === 0x80 ? (code << 6) | (ci & 0x3F) : null)) === null) o.invalidContinuationByteError({index: n + 1, from: n, to: n + 4});
+        else if (c === 0xF0 && ci <= 0x8F && !o.overlongEncodingError({index: n + 1, from: n, to: n + 4})) {}
         else if (!((ci = cache.length > 1 ? cache[1] : (cache[1] = o.get(n + 2))) >= 0)) o.unexpectedEndOfDataError({index: n + 2, from: n, to: n + 4});
         else if ((code = ((0xC0 & ci) === 0x80 ? (code << 6) | (ci & 0x3F) : null)) === null) o.invalidContinuationByteError({index: n + 2, from: n, to: n + 4});
         else if (!((ci = cache.length > 2 ? cache[2] : (cache[2] = o.get(n + 3))) >= 0)) o.unexpectedEndOfDataError({index: n + 3, from: n, to: n + 4});
@@ -190,13 +195,34 @@
       get: function (i) { return bytes[i]; },
       write: r.push.apply.bind(r.push, r),
       invalidStartByteError: err,
-      invalidContinuationByteError: err,
-      unexpectedEndOfDataError: err
+      overlongEncodingError: err,
+      unexpectedEndOfDataError: err,
+      invalidContinuationByteError: err
     });
     return r;
   };
   env.decodeUtf8BytesToString = function (bytes) {
     return env.encodeCodePointToString.apply(env, env.decodeUtf8(bytes));
   };
+
+  // function viewCodePointToUtf8(code) {
+  //   function tob(code, xcount) {
+  //     return "x".repeat(xcount) + ("0000000" + code.toString(2)).slice(-(8 - xcount));
+  //   }
+  //   var s = [], tmp;
+  //   tmp = tob(code & 0xFF, 1);
+  //   if (code >= 0x80) tmp += " invalid";
+  //   s.push(tmp);
+  //   tmp = tob((code >>> 6) & 0xFF, 3) + " " + tob(code & 0x3F, 2);
+  //   if ((code >>> 6) >= 0x20) tmp += " invalid";
+  //   s.push(tmp);
+  //   tmp = tob((code >>> 12) & 0xFF, 4) + " " + tob((code >>> 6) & 0x3F, 2) + " " + tob(code & 0x3F, 2);
+  //   if ((code >>> 12) >= 0x10) tmp += " invalid";
+  //   s.push(tmp);
+  //   tmp = tob((code >>> 18) & 0xFF, 5) + " " + tob((code >>> 12) & 0x3F, 2) + " " + tob((code >>> 6) & 0x3F, 2) + " " + tob(code & 0x3F, 2);
+  //   if ((code >>> 18) >= 0xF) tmp += " invalid";
+  //   s.push(tmp);
+  //   return s.join("\n");
+  // }
 
 }(this.env));
