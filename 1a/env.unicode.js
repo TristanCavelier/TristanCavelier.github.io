@@ -38,13 +38,12 @@
     var i = 0, l = arguments.length, code, codes = [];
     for (; i < l; i += 1) {
       code = arguments[i];
-      if (code <= 0xD7FF || (0xE000 <= code && code <= 0xFFFF)) codes.push(code);
-      else if (0xD800 <= code && code <= 0xDFFF) codes.push(0xFFFD);
-      else if (0x10FFFF < code) throw new Error("Invalid code point " + code);
-      else {  // surrogate pair
+      //if (0xD800 <= code && code <= 0xDFFF) codes.push(0xFFFD); else
+      if (code <= 0xFFFF) codes.push(code);
+      else if (code <= 0x10FFFF) {  // surrogate pair
         code -= 0x10000;
         codes.push(0xD800 + ((code >>> 10) & 0x3FF), 0xDC00 + (code & 0x3FF));
-      }
+      } else throw new Error("Invalid code point " + code);
     }
     return String.fromCharCode.apply(String, codes);
   };

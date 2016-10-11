@@ -154,6 +154,10 @@
   //testFromCodePoint(0x80);
   //testFromCodePoint(0x7FF);
   //testFromCodePoint(0x800);
+  //testFromCodePoint(0xD7FF);
+  //testFromCodePoint(0xD800);
+  //testFromCodePoint(0xDFFF);
+  //testFromCodePoint(0xE000);
   //testFromCodePoint(0xFEFF);
   //testFromCodePoint(0xFFFE);
   //testFromCodePoint(0xFFFF);
@@ -162,5 +166,6 @@
   //testFromCodePoint(0x110000);
   //testFromCodePoint(0x1FFFFF);
   //testFromCodePoint(0xFFFFFF);
+  //testFromCodePoint(parseInt(Math.random() * 0x1000000, 10));
 
 }(this.env));
