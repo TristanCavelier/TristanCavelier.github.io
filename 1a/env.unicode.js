@@ -146,6 +146,7 @@
   env.utf8DecoderAlgorithm = function (o) {
     // o.get(index) - called to get the next uint8 to decode.
     //     `index` is a counter that increments every time `get` is called.
+    //     If `get` returns < 0, NaN, null or undefined the algo stops.
     // o.write(codes) - called to push the encoded code point
     //     `codes` is an array of code points.
     // XXX use o.cache = []
