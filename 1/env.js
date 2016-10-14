@@ -2,7 +2,7 @@
 (function envExporter(exportRoot, exportKey) {
   "use strict";
 
-  /*! env.js Version 1.0.0
+  /*! env.js Version 1.0.1
 
       Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
@@ -11,11 +11,17 @@
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
-  // provides: env.registerLib, env.getRegisteredLib, env.toScript, env.copyEnv, env.newEnv
+  // provides:
+  //   env
+  //   env.registerLib
+  //   env.getRegisteredLib
+  //   env.toScript
+  //   env.copyEnv
+  //   env.newEnv
 
   var env = {}, registeredLib = [];
-  if (typeof exportKey !== "string") exportKey = "env";
-  if (typeof exportRoot === "object" && exportRoot !== null) exportRoot[exportKey] = env;
+  if (exportKey === undefined) exportKey = "env";
+  if (exportRoot) exportRoot[exportKey] = env;
 
   env.registerLib = function (lib) {
     if (typeof lib !== "function") throw new Error("lib is not a function");
@@ -24,9 +30,9 @@
   env.getRegisteredLib = function () { return registeredLib.slice(); };
   env.toScript = function () {
     var i, l = registeredLib.length, a = new Array(l + 1);
-    a[0] = "(" + envExporter.toString() + "(this));"
-    for (i = 0; i < l; i += 1) a[i + 1] = "(" + registeredLib[i].toString() + "(env));"
-    return a.join("\n") + "\n";
+    a[0] = "(" + envExporter.toString() + "(this));\n"
+    for (i = 0; i < l; i += 1) a[i + 1] = "(" + registeredLib[i].toString() + "(this.env));\n"
+    return a.join("");
   };
   env.copyEnv = function () {
     var newEnv = envExporter(), l = registeredLib.length, i;
