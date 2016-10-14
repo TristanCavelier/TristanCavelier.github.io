@@ -27,6 +27,16 @@
     return d.promise;
   };
 
+  env.readBlobAsDataURL = function (blob) {
+    /*global FileReader */
+    var d = env.newDeferred(), fr = new FileReader();
+    fr.onload = function (e) { return d.resolve(e.target.result); };
+    fr.onerror = fr.onabort = function (e) { return d.reject(e.target.error); };
+    d.promise.cancel = function () { fr.abort(); };
+    fr.readAsDataURL(blob);
+    return d.promise;
+  };
+
   env.readBlobAsText = function (blob) {
     /*global FileReader */
     var d = env.newDeferred(), fr = new FileReader();
