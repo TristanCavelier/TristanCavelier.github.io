@@ -492,46 +492,6 @@
   }
   env.staticMethodNew = staticMethodNew;
 
-  /////////////////////
-  // Type converters //
-  /////////////////////
-
-  function readBlobAsArrayBufferTask(blob) {
-    /*global FileReader */
-    var d = env.newDeferred(), fr = new FileReader();
-    fr.onload = function (ev) { return d.resolve(ev.target.result); };
-    fr.onerror = function () { return d.reject(new Error("unable to read blob as arraybuffer")); };
-    fr.onabort = function () { return d.reject(new Error("cancelled")); };
-    d.promise.cancel = function () { fr.abort(); };
-    fr.readAsArrayBuffer(blob);
-    return d.promise;
-  }
-  env.readBlobAsArrayBuffer = readBlobAsArrayBufferTask;
-
-  function readBlobAsTextTask(blob) {
-    /*global FileReader */
-    var d = env.newDeferred(), fr = new FileReader();
-    fr.onload = function (ev) { return d.resolve(ev.target.result); };
-    fr.onerror = function () { return d.reject(new Error("unable to read blob as text")); };
-    fr.onabort = function () { return d.reject(new Error("cancelled")); };
-    d.promise.cancel = function () { fr.abort(); };
-    fr.readAsText(blob);
-    return d.promise;
-  }
-  env.readBlobAsText = readBlobAsTextTask;
-
-  function readBlobAsDataUriTask(blob) {
-    /*global FileReader */
-    var d = env.newDeferred(), fr = new FileReader();
-    fr.onload = function (ev) { return d.resolve(ev.target.result); };
-    fr.onerror = function () { return d.reject(new Error("unable to read blob as text")); };
-    fr.onabort = function () { return d.reject(new Error("cancelled")); };
-    d.promise.cancel = function () { fr.abort(); };
-    fr.readAsDataURL(blob);
-    return d.promise;
-  }
-  env.readBlobAsDataUri = readBlobAsDataUriTask;
-
 
   ////////////////////////
   // Parsers and eaters //
@@ -825,8 +785,7 @@
   function encodeBlobToBase64TaskNative(blob) {
     var d = env.newDeferred(), fr = new FileReader();
     fr.onload = function (ev) { return d.resolve(ev.target.result.slice(37)); };
-    fr.onerror = function () { return d.reject(new Error("Unable to read blob as data url")); };
-    fr.onabort = function () { return d.reject(new Error("Cancelled")); };
+    fr.onerror = fr.onabort = function (e) { return d.reject(e.target.error); };
     d.promise.cancel = function () { fr.abort(); };
     fr.readAsDataURL(new Blob([blob], {"type": "application/octet-stream"}));
     return d.promise;
