@@ -2,7 +2,7 @@
 (function envAsync(env) {
   "use strict";
 
-  /*! Version 1.0.2
+  /*! Version 1.0.3
 
       Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
@@ -11,10 +11,21 @@
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
-  // dependencies: setTimeout, clearTimeout
-  // optional dependency: Promise
-  // provides: env.setTimeout, env.clearTimeout, env.setImmediate,
-  //           env.{,new}Promise, env.{,new}Deferred
+  // dependencies:
+  //   setTimeout, clearTimeout
+  //   Promise (optional)
+  // provides:
+  //   env.setTimeout
+  //   env.clearTimeout
+  //   env.setImmediate
+  //   env.Promise
+  //   env.Promise.resolve
+  //   env.Promise.reject
+  //   env.Promise.all
+  //   env.Promise.race
+  //   env.newPromise
+  //   env.Deferred
+  //   env.newDeferred
 
   if (env.registerLib) env.registerLib(envAsync);
   env.setTimeout = setTimeout.bind(null);
@@ -39,7 +50,7 @@
       /*jslint plusplus: true */
       var l = arguments.length - 1, a = new Array(l), i = 0;
       while (i < l) { a[i] = arguments[++i]; }
-      queue.push(fn.apply.bind(fn, null, a));
+      queue.push(function () { fn.apply(null, a); });
       while (++timerCount < maxTimers) { setTimeout(exec); }
       setTimeout(exec);
     }
