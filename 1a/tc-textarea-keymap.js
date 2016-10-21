@@ -35,7 +35,7 @@
     });
   }
   function replaceText(textarea, regexp, replacement) {
-    var match, start = textarea.selectionStart, end = textarea.selectionEnd;
+    var match, start = textarea.selectionStart, end = textarea.selectionEnd, tmp;
     if (start === end) end = textarea.value.length;
     if (regexp.global) {
       setRangeText(
@@ -49,11 +49,11 @@
       if (match) {
         setRangeText(
           textarea,
-          formatMatchReplacement(match, replacement),
+          tmp = formatMatchReplacement(match, replacement),
           start + match.index,
           start + match.index + match[0].length
         );
-        textarea.setSelectionRange(start + match.index, start + match.index + match[0].length);
+        textarea.setSelectionRange(start + match.index, start + match.index + tmp.length);
       }
     }
   }
