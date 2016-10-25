@@ -12,8 +12,11 @@
       http://www.wtfpl.net/ for more details. */
 
   // dependency:
-  //   env.QuickTask.exec (tasks)
+  //   env.QuickTask.exec (tasks) XXX use it on env.asyncio.js AsyncIoChain.engine = PromiseEngine / TaskEngine
   // provides:
+  //   env.IoChain
+  //   env.newIoChain
+  //
   //   env.BufferWriter
   //   env.ArrayWriter
   //   env.ArrayReader
@@ -24,6 +27,44 @@
 
   if (env.registerLib) env.registerLib(envIo);
 
+  function IoChain(ios) {
+    // ios = [new Base64DecoderIo(), new GunzipIo()]
+    // ios.write(chunk);
+    // ios.read();
+    this.ios = ios;
+    if (!ios.length) throw new Error("`ios` should not be empty");
+  }
+  IoChain.prototype.filled = undefined;
+  IoChain.prototype.closed = undefined;
+  IoChain.prototype.tic = function (forceClose) {
+    var ios = this.ios, l = ios.length - 1, i = l, chunk;
+    for (i = 0; i < l; i += 1) {
+      //if (ios[i].filled === undefined || ios[i].filled)
+      ios[i + 1].write(ios[i].read());
+      if ((forceClose || ios[i].closed) &&
+          typeof ios[i + 1].close === "function")
+        ios[i + 1].close();
+    }
+    //this.filled = ios[i].filled;
+    this.closed = ios[i].closed;
+  };
+  IoChain.prototype.write = function (chunk) {
+    var c = this.ios[0].write(chunk);
+    this.tic();
+    return c;
+  };
+  IoChain.prototype.close = function () {
+    this.ios[0].close();
+    this.tic(true);
+  };
+  IoChain.prototype.read = function (count) {
+    var io = this.ios[this.ios.length - 1], chunk = io.read(count);
+    this.filled = io.filled;
+    return chunk;
+  };
+  env.IoChain = IoChain;
+  env.newIoChain = function () { var c = env.IoChain, o = Object.create(c.prototype); c.apply(o, arguments); return o; };
+
   function BufferWriter(buffer) {
     // Usage:
     //   array = [1, 2];
@@ -31,16 +72,16 @@
     //   bufferWriter.write([3, 4]); // returns: 2
     //   bufferWriter.index = 1;
     //   bufferWriter.write([5]); // returns: 1
-    //   bufferWriter.buffer; // returns: [1, 5, 3, 4]
+    //   bufferWriter.raw; // returns: [1, 5, 3, 4]
 
     // API stability level: 1 - Experimental
-    this.buffer = buffer || [];
-    this.index = this.buffer.length;
+    this.raw = raw || [];
+    this.index = this.raw.length;
   }
-  BufferWriter.prototype.buffer = null;
+  BufferWriter.prototype.raw = null;
   BufferWriter.prototype.index = 0;
   BufferWriter.prototype.write = function (array, from, length) {
-    //     write(array array, from, length int) writenCount int
+    //     write(array array[, from[, length int]]) writenCount int
     if (from === undefined) from = 0;
     if (length === undefined) length = array.length - from;
     var i = from, buffer = this.buffer;
@@ -57,15 +98,15 @@
     //   arrayWriter.write([4]); // returns: 1
     //   arrayWriter.index = 2;
     //   arrayWriter.write([5, 6]); // returns: 1
-    //   arrayWriter.array; // returns: [4, 2, 5]
+    //   arrayWriter.raw; // returns: [4, 2, 5]
 
     // API stability level: 1 - Experimental
-    this.array = array;
+    this.raw = array;
   }
-  ArrayWriter.prototype.array = null;
+  ArrayWriter.prototype.raw = null;
   ArrayWriter.prototype.index = 0;
   ArrayWriter.prototype.write = function (array, from, length) {
-    //     write(array array, from, length int) writenCount int
+    //     write(array array[, from[, length int]]) writenCount int
     if (from === undefined) from = 0;
     if (length === undefined) length = array.length - from;
     var i = from, buffer = this.array, bl = buffer.length;
@@ -87,7 +128,7 @@
     // API stability level: 1 - Experimental
     this.raw = array || [];
   }
-  ArrayReader.prototype.array = null;
+  ArrayReader.prototype.raw = null;
   ArrayReader.prototype.index = 0;
   ArrayReader.prototype.read = function (count) {
     //     read([count int]) array
