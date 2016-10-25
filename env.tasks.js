@@ -2,7 +2,7 @@
 (function envTasks(env) {
   "use strict";
 
-  /*! Version 1.0.1
+  /*! Version 1.0.2
 
       Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
@@ -11,96 +11,142 @@
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
-  // dependencies: async (env.Promise.resolve, env.Promise.reject,
-  //                      env.newPromise, env.newDeferred)
-  // provides: env.{,new}Task, env.{,new}TaskThen, env.{,new}QuickTask
+  // dependencies:
+  //   env.Promise.resolve (async)
+  //   env.newPromise (async)
+  //   env.newDeferred (async)
+  // provides:
+  //   env.Task
+  //   env.TaskAll
+  //   env.Task.all
+  //   env.TaskRace
+  //   env.Task.race
+  //   env.Task.raceWinOrCancel (BBB)
+  //   env.TaskThen
+  //   env.Task.sequence (BBB)
+  //   env.newTask
+  //   env.newTaskThen
+  //   env.QuickTask
+  //   env.QuickTask.all
+  //   env.QuickTask.race
+  //   env.QuickTask.raceWinOrCancel (BBB)
+  //   env.newQuickTask
 
   if (env.registerLib) env.registerLib(envTasks);
 
-  var wm = typeof WeakMap === "function" ? new WeakMap() : {get: function (a) { return a; }, set: function () { return; }};
-
-  function magicDeferred() {
-    var resolve, promise = env.newPromise(function (r) { resolve = r; });
-    promise.cancel = resolve;
-    promise.resume = resolve;
-    return promise;
-  }
-
   function Task(generatorFunction) {
-    wm.set(this, {});
-    var it = wm.get(this), resolve, reject, g;
-    // API stability level: 1 - Experimental
+    var resolve, reject, g, ths = this;
+    function magicDeferred() {
+      var res, promise = env.newPromise(function (r) { res = r; });
+      promise.cancel = res;
+      promise.resume = res;
+      return promise;
+    }
     function rec(method, prev) {
-      /*jslint ass: true */
-      if (it["[[TaskCancelled]]"]) { g = new Error("task cancelled"); return reject(g); }
-      if (it["[[TaskPaused]]"]) { return (it["[[TaskSubPromise]]"] = magicDeferred()).then(rec.bind(this, method, prev)); }
+      ths["[[TaskPending]]"] = null;
+      if (ths["[[TaskCancelled]]"]) return reject(new Error("task cancelled"));
+      if (ths["[[TaskPaused]]"]) return (ths["[[TaskPending]]"] = magicDeferred()).then(function () { rec(method, prev); });
       var next, done;
       try { next = g[method](prev); } catch (e) { return reject(e); }
       done = next.done;
-      it["[[TaskSubPromise]]"] = next = next.value;
-      if (it["[[TaskCancelled]]"] && next && typeof next.then === "function" && typeof next.cancel === "function") { try { next.cancel(); } catch (e) { return reject(e); } }
-      if (it["[[TaskPaused]]"] && next && typeof next.then === "function" && typeof next.pause === "function") { try { next.pause(); } catch (e) { return reject(e); } }
-      if (done) { return resolve(next); }
-      if (!next || typeof next.then !== "function") { next = env.Promise.resolve(next); }  // XXX
-      return next.then(rec.bind(this, "next"), rec.bind(this, "throw"));
+      ths["[[TaskPending]]"] = next = next.value;
+      if (ths["[[TaskCancelled]]"] && next && typeof next.then === "function" && typeof next.cancel === "function") { try { next.cancel(); } catch (e) { return reject(e); } }
+      if (ths["[[TaskPaused]]"] && next && typeof next.then === "function" && typeof next.pause === "function") { try { next.pause(); } catch (e) { return reject(e); } }
+      if (done) return resolve(next);
+      if (!next || typeof next.then !== "function") next = env.Promise.resolve(next);
+      return next.then(function (v) { rec("next", v); }, function (v) { rec("throw", v); });
     }
-    it["[[TaskPromise]]"] = env.newPromise(function (res, rej) { resolve = res; reject = rej; });
-    try {
-      g = generatorFunction.call(this);
-      rec.call(this, "next");
-    } catch (reason) {
-      reject(reason);
-    }
+    this["[[TaskPromise]]"] = env.newPromise(function (r, j) { resolve = r; reject = j; });
+    try { g = generatorFunction.call(this); rec("next"); } catch (reason) { reject(reason); }
   }
-  Task.prototype.then = function () { var p = wm.get(this)["[[TaskPromise]]"]; return p.then.apply(p, arguments); };
-  Task.prototype.catch = function () { var p = wm.get(this)["[[TaskPromise]]"]; return p.catch.apply(p, arguments); };
+  Task.prototype["[[TaskCancelled]]"] = false;
+  Task.prototype["[[TaskPaused]]"] = false;
+  Task.prototype["[[TaskPending]]"] = null;
+  Task.prototype.then = function () { var p = this["[[TaskPromise]]"]; return p.then.apply(p, arguments); };
+  Task.prototype.catch = function () { var p = this["[[TaskPromise]]"]; return p.catch.apply(p, arguments); };
   Task.prototype.cancel = function () {
-    var it = wm.get(this), p;
-    it["[[TaskCancelled]]"] = true;
-    p = it["[[TaskSubPromise]]"];
-    if (p && typeof p.then === "function" && typeof p.cancel === "function") { p.cancel(); }
+    var p = this["[[TaskPending]]"];
+    this["[[TaskCancelled]]"] = true;
+    if (p && typeof p.then === "function" && typeof p.cancel === "function") p.cancel();
     return this;
   };
   Task.prototype.pause = function () {
-    var it = wm.get(this), p;
-    it["[[TaskPaused]]"] = true;
-    p = it["[[TaskSubPromise]]"];
-    if (p && typeof p.then === "function" && typeof p.pause === "function") { p.pause(); }
+    var p = this["[[TaskPending]]"];
+    this["[[TaskPaused]]"] = true;
+    if (p && typeof p.then === "function" && typeof p.pause === "function") p.pause();
     return this;
   };
   Task.prototype.resume = function () {
-    var it = wm.get(this), p;
-    delete it["[[TaskPaused]]"];
-    p = it["[[TaskSubPromise]]"];
-    if (p && typeof p.then === "function" && typeof p.resume === "function") { p.resume(); }
+    var p = this["[[TaskPending]]"];
+    delete this["[[TaskPaused]]"];
+    if (p && typeof p.then === "function" && typeof p.resume === "function") p.resume();
     return this;
   };
-  Task.all = function (tasks) {
-    // XXX make TaskAll constructor ? inherit from a TaskManager(tasks) (using [[TaskManager:i]]) ?
-    if (tasks.length < 1) { return env.Promise.resolve([]); }
-    var i, l = tasks.length, p = new Array(l), res = [], d = env.newDeferred(), count = l;
-    for (i = 0; i < l; i += 1) { p[i] = tasks[i] && typeof tasks[i].then === "function" ? tasks[i] : env.Promise.resolve(tasks[i]); }
-    d.promise.cancel = function () { var j, v; for (j = 0; j < l; j += 1) { v = p[j]; if (v && typeof v.then === "function" && typeof v.cancel === "function") { v.cancel(); } } };
-    d.promise.pause  = function () { var j, v; for (j = 0; j < l; j += 1) { v = p[j]; if (v && typeof v.then === "function" && typeof v.pause  === "function") { v.pause();  } } };
-    d.promise.resume = function () { var j, v; for (j = 0; j < l; j += 1) { v = p[j]; if (v && typeof v.then === "function" && typeof v.resume === "function") { v.resume(); } } };
-    function solver(j, v) {
-      /*jslint plusplus: true */
-      res[j] = v;
-      if (--count === 0) { d.resolve(res); }
-    }
-    for (i = 0; i < l; i += 1) { p[i].then(solver.bind(null, i), d.reject); }
-    return d.promise;
+  env.Task = Task;
+
+  function TaskAll(iterable) {
+    var ths = this;
+    this["[[TaskPromise]]"] = env.newPromise(function (resolve, reject) {
+      var i = 0, l = iterable.length, a = ths["[[TaskArray]]"] = new Array(l), count = l, p;
+      function mksolver(j) { return function (v) { a[j] = v; if (--count === 0) resolve(a); }; }
+      for (; i < l; i += 1) {
+        if ((p = a[i] = iterable[i]) && typeof p.then === "function") p.then(mksolver(i), reject);
+        else count -= 1;
+      }
+      if (count === 0) resolve(a);
+    });
+  }
+  TaskAll.prototype.then = function () { var p = this["[[TaskPromise]]"]; p.then.apply(p, arguments); };
+  TaskAll.prototype.catch = function () { var p = this["[[TaskPromise]]"]; p.catch.apply(p, arguments); };
+  TaskAll.prototype.cancel = function () {
+    for (var i = 0, l = this["[[TaskArray]]"].length, a = this["[[TaskArray]]"], p; i < l; i += 1)
+      if ((p = a[i]) && typeof p.then === "function" && typeof p.cancel === "function")
+        try { p.cancel(); } catch (_) {}
   };
-  Task.race = function (tasks) {
-    var i, l = tasks.length, p = new Array(l), d = env.newDeferred();
-    for (i = 0; i < l; i += 1) { p[i] = tasks[i] && typeof tasks[i].then === "function" ? tasks[i] : env.Promise.resolve(tasks[i]); }
-    d.promise.cancel = function () { var j, v; for (j = 0; j < l; j += 1) { v = p[j]; if (v && typeof v.then === "function" && typeof v.cancel === "function") { v.cancel(); } } };
-    d.promise.pause  = function () { var j, v; for (j = 0; j < l; j += 1) { v = p[j]; if (v && typeof v.then === "function" && typeof v.pause  === "function") { v.pause();  } } };
-    d.promise.resume = function () { var j, v; for (j = 0; j < l; j += 1) { v = p[j]; if (v && typeof v.then === "function" && typeof v.resume === "function") { v.resume(); } } };
-    for (i = 0; i < l; i += 1) { p[i].then(d.resolve, d.reject); }
-    return d.promise;
+  TaskAll.prototype.pause = function () {
+    for (var i = 0, l = this["[[TaskArray]]"].length, a = this["[[TaskArray]]"], p; i < l; i += 1)
+      if ((p = a[i]) && typeof p.then === "function" && typeof p.pause === "function")
+        try { p.pause(); } catch (_) {}
   };
-  Task.raceWinOrCancel = function (tasks) {
+  TaskAll.prototype.resume = function () {
+    for (var i = 0, l = this["[[TaskArray]]"].length, a = this["[[TaskArray]]"], p; i < l; i += 1)
+      if ((p = a[i]) && typeof p.then === "function" && typeof p.resume === "function")
+        try { p.resume(); } catch (_) {}
+  };
+  env.TaskAll = TaskAll;
+  Task.all = function (iterable) { return new env.TaskAll(iterable); };
+
+  function TaskRace(iterable) {
+    var ths = this;
+    this["[[TaskPromise]]"] = env.newPromise(function (resolve, reject) {
+      var i = 0, l = iterable.length, a = ths["[[TaskArray]]"] = new Array(l), p;
+      for (; i < l; i += 1) {
+        if ((p = a[i] = iterable[i]) && typeof p.then === "function") p.then(resolve, reject);
+        else resolve(p);
+      }
+    });
+  }
+  TaskRace.prototype.then = function () { var p = this["[[TaskPromise]]"]; p.then.apply(p, arguments); };
+  TaskRace.prototype.catch = function () { var p = this["[[TaskPromise]]"]; p.catch.apply(p, arguments); };
+  TaskRace.prototype.cancel = function () {
+    for (var i = 0, l = this["[[TaskArray]]"].length, a = this["[[TaskArray]]"], p; i < l; i += 1)
+      if ((p = a[i]) && typeof p.then === "function" && typeof p.cancel === "function")
+        try { p.cancel(); } catch (_) {}
+  };
+  TaskRace.prototype.pause = function () {
+    for (var i = 0, l = this["[[TaskArray]]"].length, a = this["[[TaskArray]]"], p; i < l; i += 1)
+      if ((p = a[i]) && typeof p.then === "function" && typeof p.pause === "function")
+        try { p.pause(); } catch (_) {}
+  };
+  TaskRace.prototype.resume = function () {
+    for (var i = 0, l = this["[[TaskArray]]"].length, a = this["[[TaskArray]]"], p; i < l; i += 1)
+      if ((p = a[i]) && typeof p.then === "function" && typeof p.resume === "function")
+        try { p.resume(); } catch (_) {}
+  };
+  env.TaskRace = TaskRace;
+  Task.race = function (iterable) { return new env.TaskRace(iterable); };
+
+  Task.raceWinOrCancel = function (tasks) {  // BBB
     // API stability level: 1 - Experimental
     var i, l = tasks.length, p = new Array(l), d = env.newDeferred();
     for (i = 0; i < l; i += 1) { p[i] = tasks[i] && typeof tasks[i].then === "function" ? tasks[i] : env.Promise.resolve(tasks[i]); }
@@ -113,24 +159,23 @@
   };
 
   function TaskThen(previous, onDone, onFail) {
-    wm.set(this, {});
-    var it = wm.get(this);
+    var it = this;
     // API stability level: 1 - Experimental
     function rec(fn, v) {
       /*jslint ass: true */
       if (it["[[TaskCancelled]]"]) { throw new Error("task cancelled"); }
-      if (it["[[TaskPaused]]"]) { return new TaskThen(it["[[TaskSubPromise]]"] = magicDeferred(), rec.bind(it, fn, v)); }
-      var p = it["[[TaskSubPromise]]"] = fn(v);
+      if (it["[[TaskPaused]]"]) { return new TaskThen(it["[[TaskPending]]"] = magicDeferred(), rec.bind(it, fn, v)); }
+      var p = it["[[TaskPending]]"] = fn(v);
       if (it["[[TaskCancelled]]"] && p && typeof p.then === "function" && typeof p.cancel === "function") { p.cancel(); }
       if (it["[[TaskPaused]]"] && p && typeof p.then === "function" && typeof p.pause === "function") { p.pause(); }
       return p;
     }
-    previous = it["[[TaskSubPromise]]"] = previous && typeof previous.then === "function" ? previous : env.Promise.resolve(previous);  // or env.Promise.resolve()??? make a TaskThen test
+    previous = it["[[TaskPending]]"] = previous && typeof previous.then === "function" ? previous : env.Promise.resolve(previous);  // or env.Promise.resolve()??? make a TaskThen test
     it["[[TaskPromise]]"] = previous.then(typeof onDone === "function" ? rec.bind(it, onDone) : onDone, typeof onFail === "function" ? rec.bind(it, onFail) : onFail);
   }
   TaskThen.prototype = Object.create(Task.prototype);
 
-  Task.sequence = function (sequence) {
+  Task.sequence = function (sequence) {  // BBB
     // API stability level: 1 - Experimental
 
     /*jslint plusplus: true */
@@ -151,75 +196,93 @@
   env.newTaskThen = function () { var c = env.TaskThen, o = Object.create(c.prototype); c.apply(o, arguments); return o; };
 
   function QuickTask(generatorFunction) {
-    wm.set(this, {});
-    var it = wm.get(this), resolve, reject, g;
-    // API stability level: 1 - Experimental
-    function end(fn, value) {
-      this.done = true;
-      this.value = value;
-      if (fn === resolve)
-        return resolve(value);
-      this.failed = true;
-      return reject(value);
+    var _resolve, _reject, g, ths = this;
+    function magicDeferred() {
+      var res, promise = env.newPromise(function (r) { res = r; });
+      promise.cancel = res;
+      promise.resume = res;
+      return promise;
+    }
+    function resolve(value) {
+      ths.resolved = true;
+      ths.value = value;
+      return _resolve(value);
+    }
+    function reject(value) {
+      ths.reject = true;
+      ths.value = value;
+      return _reject(value);
     }
     function rec(method, prev) {
       var next, done;
+      ths["[[TaskPending]]"] = null;
       for (;;) {
-        /*jslint ass: true */
-        if (it["[[TaskCancelled]]"]) return end.call(this, reject, new Error("task cancelled"));
-        if (it["[[TaskPaused]]"]) return (it["[[TaskSubPromise]]"] = magicDeferred()).then(rec.bind(this, method, prev));
-        try { next = g[method](prev); } catch (e) { return end.call(this, reject, e); }
+        if (ths["[[TaskCancelled]]"]) return reject(new Error("task cancelled"));
+        if (ths["[[TaskPaused]]"]) return (ths["[[TaskPending]]"] = magicDeferred()).then(function () { rec(method, prev); });
+        try { next = g[method](prev); } catch (e) { return reject(e); }
         done = next.done;
-        it["[[TaskSubPromise]]"] = next = next.value;
-        if (it["[[TaskCancelled]]"] && next && typeof next.then === "function" && typeof next.cancel === "function") { try { next.cancel(); } catch (e) { return end.call(this, reject, e); } }
-        if (it["[[TaskPaused]]"] && next && typeof next.then === "function" && typeof next.pause === "function") { try { next.pause(); } catch (e) { return end.call(this, reject, e); } }
-        if (done) return end.call(this, resolve, next);
+        ths["[[TaskPending]]"] = next = next.value;
+        if (ths["[[TaskCancelled]]"] && next && typeof next.then === "function" && typeof next.cancel === "function") { try { next.cancel(); } catch (e) { return reject(e); } }
+        if (ths["[[TaskPaused]]"] && next && typeof next.then === "function" && typeof next.pause === "function") { try { next.pause(); } catch (e) { return reject(e); } }
+        if (done) return resolve(next);
         if (next && typeof next.then === "function")
-          return next.then(rec.bind(this, "next"), rec.bind(this, "throw"));
+          return next.then(function (v) { rec("next", v); }, function (v) { rec("throw", v); });
         prev = next;
         method = "next";
       }
     }
-    it["[[TaskPromise]]"] = env.newPromise(function (res, rej) { resolve = res; reject = rej; });
-    try {
-      g = generatorFunction.call(this);
-      rec.call(this, "next");
-    } catch (reason) {
-      reject(reason);
-    }
+    this["[[TaskPromise]]"] = env.newPromise(function (r, j) { _resolve = r; _reject = j; });
+    try { g = generatorFunction.call(this); rec("next"); } catch (reason) { reject(reason); }
   }
-  QuickTask.prototype = Task.prototype;  // XXX use Object.create ?
+  QuickTask.prototype["[[TaskCancelled]]"] = false;
+  QuickTask.prototype["[[TaskPaused]]"] = false;
+  QuickTask.prototype["[[TaskPending]]"] = null;
+  QuickTask.prototype.then = function () { var p = this["[[TaskPromise]]"]; return p.then.apply(p, arguments); };
+  QuickTask.prototype.catch = function () { var p = this["[[TaskPromise]]"]; return p.catch.apply(p, arguments); };
+  QuickTask.prototype.cancel = function () {
+    var p = this["[[TaskPending]]"];
+    this["[[TaskCancelled]]"] = true;
+    if (p && typeof p.then === "function" && typeof p.cancel === "function") p.cancel();
+    return this;
+  };
+  QuickTask.prototype.pause = function () {
+    var p = this["[[TaskPending]]"];
+    this["[[TaskPaused]]"] = true;
+    if (p && typeof p.then === "function" && typeof p.pause === "function") p.pause();
+    return this;
+  };
+  QuickTask.prototype.resume = function () {
+    var p = this["[[TaskPending]]"];
+    delete this["[[TaskPaused]]"];
+    if (p && typeof p.then === "function" && typeof p.resume === "function") p.resume();
+    return this;
+  };
   QuickTask.exec = function (generatorFunction) {
     // task = gf => QuickTask.exec(gf);
 
     // API stability level: 1 - Experimental
     var qt = new QuickTask(generatorFunction);
-    if (qt.failed) throw qt.value;
-    if (qt.done) return qt.value;
+    if (qt.resolved) return qt.value;
+    if (qt.reject) throw qt.value;
     return qt;
   };
-  QuickTask.all = function (tasks) {
-    for (var t, i = 0, l = tasks.length, res = []; i < l; i += 1) {
-      t = tasks[i];
-      if (t && typeof t === "function") {
-        if (t.failed) throw t.value;
-        if (t.done) res[i] = t.value;
-        else return Task.all(tasks);  // can be quicker ?
-      } else res[i] = t;
+  QuickTask.all = function (iterable) {
+    for (var i = 0, l = iterable.length, a = new Array(l); i < l; i += 1) {
+      if (iterable[i].resolved) a[i] = iterable[i].value;
+      else if (iterable[i].reject) throw iterable[i].value;
+      else return env.Task.all(iterable);
     }
-    return res;
+    return a;
   };
-  QuickTask.race = function (tasks) {
-    for (var t, i = 0, l = tasks.length; i < l; i += 1) {
-      t = tasks[i];
-      if (t && typeof t === "function") {
-        if (t.failed) throw t.value;
-        if (t.done) return t.value;
-      } else return t;
+  QuickTask.race = function (iterable) {
+    for (var i = 0, l = iterable.length; i < l; i += 1) {
+      if (iterable[i].resolved) return iterable[i].value;
+      else if (iterable[i].rejected) throw iterable[i].value;
     }
-    return Task.race(tasks);  // can be quicker ?
+    return env.Task.race(iterable);
   };
-  QuickTask.raceWinOrCancel = function (tasks) {
+
+  QuickTask.raceWinOrCancel = function (tasks) {  // BBB
     for (var t, i = 0, l = tasks.length; i < l; i += 1) {
       t = tasks[i];
       if (t && typeof t === "function") {
@@ -228,31 +291,6 @@
       } else return t;
     }
     return Task.raceWinOrCancel(tasks);  // can be quicker ?
-  };
-  // should be useless because exec is quicker
-  QuickTask.sequence = function (sequence) {
-    // API stability level: 1 - Experimental
-    return QuickTask.exec(function* () {
-      var i, s, v, thrown = false;
-      for (i = 0; i < sequence.length; i += 1) {
-        s = sequence[i];
-        if (Array.isArray(s)) {
-          if (thrown) s = s[1];
-          else s = s[0];
-        } else if (thrown) s = null;
-        if (typeof s === "function") {
-          try {
-            v = yield s(v);
-            thrown = false;
-          } catch (e) {
-            v = e;
-            thrown = true;
-          }
-        }
-      }
-      if (thrown) throw v;
-      return v;
-    });
   };
   env.QuickTask = QuickTask;
   env.newQuickTask = function () { var c = env.QuickTask, o = Object.create(c.prototype); c.apply(o, arguments); return o; };
