@@ -52,10 +52,11 @@
     // ]
     var result = [], lastIndex = 0;
     text.replace(separator, function (match) {
-      var l = arguments.length - 2, index = arguments[l], i;
+      var l = arguments.length - 2, index = arguments[l],
+          i = 1, o = {type: "separator", "0": match};
       result.push({type: "component", "0": text.slice(lastIndex, index)});
-      result.push({type: "separator", "0": match});
-      for (i = 1; i < l; i += 1) { result[result.length - 1][i] = arguments[i]; }
+      result.push(o);
+      for (i = 1; i < l; i += 1) o[i] = arguments[i];
       lastIndex = index + match.length;
       return match;
     });
