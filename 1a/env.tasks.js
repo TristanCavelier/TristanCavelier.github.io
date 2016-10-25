@@ -30,7 +30,6 @@
   //   env.QuickTask.all
   //   env.QuickTask.race
   //   env.QuickTask.raceWinOrCancel (BBB)
-  //   env.QuickTask.sequence (BBB)
   //   env.newQuickTask
 
   if (env.registerLib) env.registerLib(envTasks);
@@ -292,31 +291,6 @@
       } else return t;
     }
     return Task.raceWinOrCancel(tasks);  // can be quicker ?
-  };
-  // should be useless because exec is quicker
-  QuickTask.sequence = function (sequence) {  // BBB
-    // API stability level: 1 - Experimental
-    return QuickTask.exec(function* () {
-      var i, s, v, thrown = false;
-      for (i = 0; i < sequence.length; i += 1) {
-        s = sequence[i];
-        if (Array.isArray(s)) {
-          if (thrown) s = s[1];
-          else s = s[0];
-        } else if (thrown) s = null;
-        if (typeof s === "function") {
-          try {
-            v = yield s(v);
-            thrown = false;
-          } catch (e) {
-            v = e;
-            thrown = true;
-          }
-        }
-      }
-      if (thrown) throw v;
-      return v;
-    });
   };
   env.QuickTask = QuickTask;
   env.newQuickTask = function () { var c = env.QuickTask, o = Object.create(c.prototype); c.apply(o, arguments); return o; };
