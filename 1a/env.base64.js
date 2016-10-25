@@ -60,8 +60,8 @@
   }
   env.parseBase64SchemeForStringDecoding = parseBase64SchemeForStringDecoding;
 
-  function decodeBase64ChunkAlgorithm(bytes, cache, schemeCodeMap, o, close) {
-    // bytes = [...]
+  function decodeBase64ChunkAlgorithm(codes, cache, schemeCodeMap, o, close) {
+    // codes = [...]
     //   bytes to decode
     // cache = []
     //   used by the algorithm
@@ -81,11 +81,11 @@
     // o.unexpectedEndOfDataError(XXX)
     // close = false (optional)
     // returns bytes of decoded base64
-    var i = 0, l = bytes.length,
+    var i = 0, l = codes.length,
         bytes = [],
         code, a, b, c;
     for (; i < l; i += 1) {
-      code = schemeCodeMap[bytes[i]];
+      code = schemeCodeMap[codes[i]];
       if (!(code >= 0)) o.invalidByteError({index: i});
       else if (code === 64 && (cache.length % 4) <= 1) o.unexpectedPaddingError({index: i});
       else if (code >= 65) {}
@@ -106,7 +106,7 @@
         cache.splice(0, 4);
       }
     }
-    if (close && cache.length) o.unexpectedEndOfDataError({index: bytes.length});
+    if (close && cache.length) o.unexpectedEndOfDataError({index: codes.length});
     return bytes;
   }
   env.decodeBase64ChunkAlgorithm = decodeBase64ChunkAlgorithm;
@@ -219,8 +219,8 @@
   }
   env.parseBase64SchemeForStringEncoding = parseBase64SchemeForStringEncoding;
 
-  function encodeBase64ChunkAlgorithm(chunk, cache, schemeCodes, close) {
-    // chunk = [...]
+  function encodeBase64ChunkAlgorithm(bytes, cache, schemeCodes, close) {
+    // bytes = [...]
     //   array of byte numbers
     // cache = []
     //   used by the algorithm
@@ -234,24 +234,24 @@
     // close = false (optional)
     // returns bytes of encoded base64
     var codes = [],
-        i = 0, l = chunk.length;
+        i = 0, l = bytes.length;
     for (; i < l; i += 1) {
       switch (cache.length % 4) {
         case 0:
-          cache[0] = chunk[i] >>> 2;
-          cache[1] = (chunk[i] << 4) & 0x30;
+          cache[0] = bytes[i] >>> 2;
+          cache[1] = (bytes[i] << 4) & 0x30;
           break;
         case 1: cache[1] = 0;
         case 2:
-          cache[1] |= chunk[i] >>> 4;
-          cache[2] = (chunk[i] << 2) & 0x3C;
+          cache[1] |= bytes[i] >>> 4;
+          cache[2] = (bytes[i] << 2) & 0x3C;
           break;
         default:
           codes.push(
             schemeCodes[cache[0]],
             schemeCodes[cache[1]],
-            schemeCodes[cache[2] | (chunk[i] >>> 6)],
-            schemeCodes[chunk[i] & 0x3F]
+            schemeCodes[cache[2] | (bytes[i] >>> 6)],
+            schemeCodes[bytes[i] & 0x3F]
           );
           cache.splice(0, 3);
       }
