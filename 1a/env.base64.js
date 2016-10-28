@@ -297,7 +297,7 @@
   env.encodeBase64 = encodeBase64;
 
   function encodeBase64ToString(bytes) {
-    return encodeBase64ChunkAlgorithm(bytes, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=", true).join("");
+    return encodeBase64ChunkAlgorithm(bytes, [], "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=", true).join("");
   }
   env.encodeBase64ToString = encodeBase64ToString;
 
