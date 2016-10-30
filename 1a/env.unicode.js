@@ -12,17 +12,17 @@
       http://www.wtfpl.net/ for more details. */
 
   // provides:
-  //   env.encodeCodePointToString,
+  //   env.encodeCodePointToString
   //
-  //   env.codePointsToUtf16EncoderAlgorithm,
-  //   env.encodeCodePointsToUtf16,
+  //   env.codePointsToUtf16EncoderAlgorithm
+  //   env.encodeCodePointsToUtf16
   //
-  //   env.utf16ToUtf8EncoderAlgorithm,
-  //   env.encodeUtf16ToUtf8,
-  //   env.encodeStringToUtf8Bytes,
+  //   env.utf16ToUtf8EncoderAlgorithm
+  //   env.encodeUtf16ToUtf8
+  //   env.encodeStringToUtf8Bytes
   //
-  //   env.utf8DecoderAlgorithm,
-  //   env.decodeUtf8,
+  //   env.utf8DecoderAlgorithm
+  //   env.decodeUtf8
   //   env.decodeUtf8BytesToString
 
   if (env.registerLib) env.registerLib(envUnicode);
