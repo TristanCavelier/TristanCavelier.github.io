@@ -14,7 +14,7 @@
   // provides:
   //   env.encodeCodePointToString
   //
-  //   env.codePointsToUtf16EncoderAlgorithm
+  //   env.encodeCodePointsToUtf16ChunkAlgorithm
   //   env.encodeCodePointsToUtf16
   //
   //   env.encodeUtf16ToUtf8ChunkAlgorithm
@@ -48,35 +48,33 @@
     return String.fromCharCode.apply(String, codes);
   };
 
-  env.codePointsToUtf16EncoderAlgorithm = function (o) {
-    // o.get(index) - called to get the next code point to encode.
-    //     `index` is a counter that increments every time `get` is called.
-    //     If `get` returns < 0, NaN, null or undefined the algo stops.
-    // o.write(codes) - called to push the encoded uint16
-    //     `codes` is an array of uint16.
-    // o.reservedCodePointError({index}) - called if > U+D800 & < U+DFFF
-    // o.invalidCodePointError({index}) - called if > U+10FFFF
+  env.encodeCodePointsToUtf16ChunkAlgorithm = function (codePoints, utf16Codes, o) {
+    // codePoints = [...]
+    //   an array of code points (uint32)
+    // utf16Codes = []
+    //   where the utf16 codes (uint16) will be written
+    // o.reservedCodePointError({codePoints, utf16Codes, index}) - called if > U+D800 & < U+DFFF
+    // o.invalidCodePointError({codePoints, utf16Codes, index}) - called if > U+10FFFF
+    // returns utf16Codes
 
-    var n, code;
-    for (n = 0; (code = o.get(n)) >= 0; n += 1) {
-      if (code <= 0xD7FF) o.write([code]);
-      else if (code <= 0xDFFF) o.reservedCodePointError({index: n});
-      else if (code <= 0xFFFF) o.write([code]);
+    var i = 0, l = codePoints.length, code;
+    for (; i < l; i += 1) {
+      code = codePoints[i];
+      if (code <= 0xD7FF) utf16Codes.push(code);
+      else if (code <= 0xDFFF) o.reservedCodePointError({codePoints: codePoints, utf16Codes: utf16Codes, index: i});
+      else if (code <= 0xFFFF) utf16Codes.push(code);
       else if (code <= 0x10FFFF) {  // surrogate pair
         code -= 0x10000;
-        o.write([0xD800 + ((code >>> 10) & 0x3FF), 0xDC00 + (code & 0x3FF)]);
-      } else o.invalidCodePointError({index: n});
+        utf16Codes.push(0xD800 + ((code >>> 10) & 0x3FF), 0xDC00 + (code & 0x3FF));
+      } else o.invalidCodePointError({codePoints: codePoints, utf16Codes: utf16Codes, index: i});
     }
+    return utf16Codes;
   };
   env.encodeCodePointsToUtf16 = function (codePoints) {
-    var r = [];
-    env.codePointsToUtf16EncoderAlgorithm({
-      get: function (i) { return codePoints[i]; },
-      write: r.push.apply.bind(r.push, r),
-      invalidCodePointError: function () { r.push(0xFFFD); },  // force encoding to work
-      reservedCodePointError: function (o) { r.push(codePoints[o.index]); }  // accept reserved code points (like in chrome).
+    return env.encodeCodePointsToUtf16ChunkAlgorithm(codePoints, [], {
+      reservedCodePointError: function (o) { o.utf16Codes.push(o.codePoints[o.index]); },  // accept reserved code points (like in chrome)
+      invalidCodePointError: function (o) { o.utf16Codes.push(0xFFFD); }  // force encoding to work
     });
-    return r;
   };
 
   env.encodeUtf16ToUtf8ChunkAlgorithm = function (utf16Codes, utf8Codes, cache, o, close) {
