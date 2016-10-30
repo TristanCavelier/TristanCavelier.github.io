@@ -89,7 +89,7 @@
   function testSoftEncodeStringToUtf8Bytes(text) {
     nativeSoftEncodeTextToUtf8Bytes(text, function (err, bytes) {
       test("unicode " + JSON.stringify(text) + " " + bytesToJs(textToShorts(text)), 300, Array.from(new Uint8Array(bytes)), function (res, end) {
-        res.push.apply(res, env.encodeStringToUtf8Bytes(text));
+        res.push.apply(res, env.encodeStringToUtf8(text));
         end();
       });
     });
@@ -146,6 +146,12 @@
   testSoftEncodeStringToUtf8Bytes("\udfff");
   testSoftEncodeStringToUtf8Bytes("\ue000");
   testSoftEncodeStringToUtf8Bytes(String.fromCharCode(0x5359,0xdc39));
+  testSoftEncodeStringToUtf8Bytes(String.fromCharCode(
+    0x2d8b,0xe21b,0x61b1,0xd3c7,0x1b30,0xf8a9,0x9401,0xfa3b,0x7cc3,0xd988,
+    0x5408,0xbc7f,0x124d,0x6f75,0xcfe7,0xd1f7,0xf3f2,0xb3da,0x7c03,0x70cb,
+    0x27fd,0x477f,0x2878,0x81e5,0xfc4f,0xc67c,0xea1c,0x9a02,0x26c9,0xf233,
+    0x1d9d,0x59f3,0x2b61
+  ));
   testSoftEncodeStringToUtf8Bytes(randText(Math.random() * 100));
 
   //testFromCodePoint(0x00);

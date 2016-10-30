@@ -17,9 +17,9 @@
   //   env.codePointsToUtf16EncoderAlgorithm
   //   env.encodeCodePointsToUtf16
   //
-  //   env.utf16ToUtf8EncoderAlgorithm
+  //   env.encodeUtf16ToUtf8ChunkAlgorithm
   //   env.encodeUtf16ToUtf8
-  //   env.encodeStringToUtf8Bytes
+  //   env.encodeStringToUtf8
   //
   //   env.utf8DecoderAlgorithm
   //   env.decodeUtf8
@@ -79,68 +79,56 @@
     return r;
   };
 
-  env.utf16ToUtf8EncoderAlgorithm = function (o) {
-    // o.get(index) - called to get the next uint16 to encode.
-    //     `index` is a counter that increments every time `get` is called.
-    //     If `get` returns < 0, NaN, null or undefined the algo stops.
-    // o.write(codes) - called to push the encoded uint8
-    //     `codes` is an array of uint8.
-    // XXX use o.cache = []
-    // o.invalidStartCodeError({index}) - called on invalid surrogate start
-    // o.unexpectedEndOfDataError({index, from, to}) - called on incomplete surrogate pair
-    // o.invalidContinuationCodeError({index, from, to}) - called on invalid surrogate pair
+  env.encodeUtf16ToUtf8ChunkAlgorithm = function (utf16Codes, utf8Codes, cache, o, close) {
+    // utf16Codes = [...]
+    //   an array of utf16 codes (uint16)
+    // utf8Codes = []
+    //   where the utf8 codes (uint8) will be written
+    // cache = []
+    //   used by the algorithm
+    // o.invalidStartCodeError({utf16Codes, utf8Codes, index}) - called on invalid surrogate start
+    // o.unexpectedEndOfDataError({utf16Codes, utf8Codes, index}) - called on incomplete surrogate pair
+    // o.invalidContinuationCodeError({utf16Codes, utf8Codes, index}) - called on invalid surrogate pair
+    //   if returns true, the algorithm reparse the current utf16code as an utf16 start code.
+    // close = false (optional)
+    // returns utf8Codes
 
-    var n, c, c2, cached;
-    for (n = 0; (c = cached ? (cached = false) || c2 : o.get(n)) >= 0; n += 1) {
-      if (c <= 0x7F) o.write([c]);
-      else if (c <= 0x7FF) o.write([(c >> 6) | 0xc0, (c & 0x3f) | 0x80]);
-      else if (0xd800 <= c && c <= 0xdbff) {
-        c2 = o.get(n + 1);
-        cached = true;
-        // break; is not necessary in this algorithm
-        if (!(c2 >= 0)) { o.unexpectedEndOfDataError({index: n + 1, from: n, to: n + 2}); break; }
-        else if (0xdc00 <= c2 && c2 <= 0xdfff) {
-          c = ((c - 0xd800) << 10) + (c2 - 0xdc00) + 0x10000;
-          o.write([
-            (c >> 18) | 0xf0,
-            ((c >> 12) & 0x3f) | 0x80,
-            ((c >> 6) & 0x3f) | 0x80,
-            (c & 0x3f) | 0x80
-          ]);
-          n += 1;
-          cached = false;
-        } else o.invalidContinuationCodeError({index: n + 1, from: n, to: n + 2});
-      } else if (0xdc00 <= c && c <= 0xdfff) o.invalidStartCodeError({index: n});
-      else o.write([
-        ((c >> 12) & 0xf) | 0xe0,
-        ((c >> 6) & 0x3f) | 0x80,
-        (c & 0x3f) | 0x80
-      ]);
+    var i = 0, l = utf16Codes.length, c, c1;
+    for (; i < l; i += 1) {
+      c = utf16Codes[i];
+      if (cache.length) {
+        if (0xdc00 <= c && c <= 0xdfff) {
+          c1 = cache[0];
+          c1 = ((c1 - 0xd800) << 10) + (c - 0xdc00) + 0x10000;
+          utf8Codes.push((c1 >> 18) | 0xf0, ((c1 >> 12) & 0x3f) | 0x80, ((c1 >> 6) & 0x3f) | 0x80, (c1 & 0x3f) | 0x80);
+        } else if (o.invalidContinuationCodeError({utf16Codes: utf16Codes, utf8Codes: utf8Codes, index: i})) i -= 1;
+        cache.shift();
+      } else if (c <= 0x7F) utf8Codes.push(c);
+      else if (c <= 0x7FF) utf8Codes.push((c >> 6) | 0xc0, (c & 0x3f) | 0x80);
+      else if (0xd800 <= c && c <= 0xdbff) cache[0] = c;
+      else if (0xdc00 <= c && c <= 0xdfff) o.invalidStartCodeError({utf16Codes: utf16Codes, utf8Codes: utf8Codes, index: i});
+      else utf8Codes.push(((c >> 12) & 0xf) | 0xe0, ((c >> 6) & 0x3f) | 0x80, (c & 0x3f) | 0x80);
     }
+    if (close && cache.length) o.unexpectedEndOfDataError({utf16Codes: utf16Codes, utf8Codes: utf8Codes, index: utf16Codes.length});
+    return utf8Codes;
   };
-  env.encodeUtf16ToUtf8 = function (codes) {
-    var r = [];
-    function err() { r.push(0xEF, 0xBF, 0xBD); }
-    env.utf16ToUtf8EncoderAlgorithm({
-      get: function (i) { return codes[i]; },
-      write: r.push.apply.bind(r.push, r),
+  env.encodeUtf16ToUtf8 = function (utf16Codes) {
+    function err(o) { return o.utf8Codes.push(0xEF, 0xBF, 0xBD); }
+    return env.encodeUtf16ToUtf8ChunkAlgorithm(utf16Codes, [], [], {
       invalidStartCodeError: err,
       unexpectedEndOfDataError: err,
       invalidContinuationCodeError: err
-    });
-    return r;
+    }, true);
   };
-  env.encodeStringToUtf8Bytes = function (text) {
-    var r = [];
-    function err() { r.push(0xEF, 0xBF, 0xBD); }
-    env.utf16ToUtf8EncoderAlgorithm({
-      get: text.charCodeAt.bind(text),
-      write: r.push.apply.bind(r.push, r),
+  env.encodeStringToUtf8 = function (text) {
+    function err(o) { return o.utf8Codes.push(0xEF, 0xBF, 0xBD); }
+    var i = 0, l = text.length, utf16Codes = new Array(l);
+    for (; i < l; i += 1) utf16Codes[i] = text.charCodeAt(i);
+    return env.encodeUtf16ToUtf8ChunkAlgorithm(utf16Codes, [], [], {
       invalidStartCodeError: err,
       unexpectedEndOfDataError: err,
       invalidContinuationCodeError: err
-    });
-    return r;
+    }, true);
   };
 
   env.utf8DecoderAlgorithm = function (o) {
