@@ -60,9 +60,11 @@
   }
   env.parseBase64SchemeForStringDecoding = parseBase64SchemeForStringDecoding;
 
-  function decodeBase64ChunkAlgorithm(codes, cache, schemeCodeMap, o, close) {
+  function decodeBase64ChunkAlgorithm(codes, bytes, cache, schemeCodeMap, o, close) {
     // codes = [...]
     //   bytes to decode
+    // bytes = []
+    //   where decoded bytes will be written
     // cache = []
     //   used by the algorithm
     // schemeCodeMap = {
@@ -76,18 +78,16 @@
     //     "=":64,  // padding value
     //     " ":65,"\t":66,"\r":67,"\n":68  // ignored values
     //   }
-    // o.invalidByteError(XXX)
-    // o.unexpectedPaddingError(XXX)
-    // o.unexpectedEndOfDataError(XXX)
+    // o.invalidByteError({codes, bytes, index}) - called on invalid byte
+    // o.unexpectedPaddingError({codes, bytes, index}) - called on unexpected padding
+    // o.unexpectedEndOfDataError({codes, bytes, index}) - called on unexpected end of data
     // close = false (optional)
     // returns bytes of decoded base64
-    var i = 0, l = codes.length,
-        bytes = [],
-        code, a, b, c;
+    var i = 0, l = codes.length, code, a, b, c;
     for (; i < l; i += 1) {
       code = schemeCodeMap[codes[i]];
-      if (!(code >= 0)) o.invalidByteError({index: i});
-      else if (code === 64 && (cache.length % 4) <= 1) o.unexpectedPaddingError({index: i});
+      if (!(code >= 0)) o.invalidByteError({codes: codes, bytes: bytes, index: i});
+      else if (code === 64 && (cache.length % 4) <= 1) o.unexpectedPaddingError({codes: codes, bytes: bytes, index: i});
       else if (code >= 65) {}
       else cache.push(code);
     }
@@ -106,13 +106,13 @@
         cache.splice(0, 4);
       }
     }
-    if (close && cache.length) o.unexpectedEndOfDataError({index: codes.length});
+    if (close && cache.length) o.unexpectedEndOfDataError({codes: codes, bytes: bytes, index: codes.length});
     return bytes;
   }
   env.decodeBase64ChunkAlgorithm = decodeBase64ChunkAlgorithm;
 
   function decodeBase64(bytes) {
-    return decodeBase64ChunkAlgorithm(bytes, [], {
+    return env.decodeBase64ChunkAlgorithm(bytes, [], [], {
       65:0,66:1,67:2,68:3,69:4,70:5,71:6,72:7,73:8,74:9,75:10,76:11,77:12,
       78:13,79:14,80:15,81:16,82:17,83:18,84:19,85:20,86:21,87:22,88:23,89:24,90:25,  // A-Z
       97:26,98:27,99:28,100:29,101:30,102:31,103:32,104:33,105:34,106:35,107:36,108:37,109:38,
@@ -132,7 +132,7 @@
   env.decodeBase64 = decodeBase64;
 
   function decodeBase64String(string) {
-    return decodeBase64ChunkAlgorithm(string, [], {
+    return env.decodeBase64ChunkAlgorithm(string, [], [], {
       A:0,B:1,C:2,D:3,E:4,F:5,G:6,H:7,I:8,J:9,K:10,L:11,M:12,
       N:13,O:14,P:15,Q:16,R:17,S:18,T:19,U:20,V:21,W:22,X:23,Y:24,Z:25,
       a:26,b:27,c:28,d:29,e:30,f:31,g:32,h:33,i:34,j:35,k:36,l:37,m:38,
@@ -160,14 +160,12 @@
   Base64DecoderIo.prototype.schemeCodeMap = parseBase64SchemeForDecoding("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/= \t\r\n");
   //Base64DecoderIo.prototype.filled = false;
   Base64DecoderIo.prototype.write = function (bytes) {
-    var v = this.value;
-    v.push.apply(v, env.decodeBase64ChunkAlgorithm(bytes, this.cache, this.schemeCodeMap, this, false));
+    env.decodeBase64ChunkAlgorithm(bytes, this.value, this.cache, this.schemeCodeMap, this, false);
     //if (v.length) this.filled = true;
   };
   Base64DecoderIo.prototype.closed = false;
   Base64DecoderIo.prototype.close = function () {
-    var v = this.value;
-    v.push.apply(v, env.decodeBase64ChunkAlgorithm([], this.cache, this.schemeCodeMap, this, true));
+    env.decodeBase64ChunkAlgorithm([], this.value, this.cache, this.schemeCodeMap, this, true);
     //if (v.length) this.filled = true;
     this.closed = true;
   };
@@ -219,9 +217,11 @@
   }
   env.parseBase64SchemeForStringEncoding = parseBase64SchemeForStringEncoding;
 
-  function encodeBase64ChunkAlgorithm(bytes, cache, schemeCodes, close) {
+  function encodeBase64ChunkAlgorithm(bytes, codes, cache, schemeCodes, close) {
     // bytes = [...]
     //   array of byte numbers
+    // codes = []
+    //   where encoded codes will be written
     // cache = []
     //   used by the algorithm
     // schemeCodes = [
@@ -233,8 +233,7 @@
     //   ]
     // close = false (optional)
     // returns bytes of encoded base64
-    var codes = [],
-        i = 0, l = bytes.length;
+    var i = 0, l = bytes.length;
     for (; i < l; i += 1) {
       switch (cache.length % 4) {
         case 0:
@@ -284,7 +283,7 @@
   env.encodeBase64ChunkAlgorithm = encodeBase64ChunkAlgorithm;
 
   function encodeBase64(bytes) {
-    return encodeBase64ChunkAlgorithm(bytes, [], [
+    return env.encodeBase64ChunkAlgorithm(bytes, [], [], [
       65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,  // A-Z
       97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122, // a-z
       48,49,50,51,52,53,54,55,56,57,  // 0-9
@@ -297,7 +296,7 @@
   env.encodeBase64 = encodeBase64;
 
   function encodeBase64ToString(bytes) {
-    return encodeBase64ChunkAlgorithm(bytes, [], "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=", true).join("");
+    return env.encodeBase64ChunkAlgorithm(bytes, [], [], "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=", true).join("");
   }
   env.encodeBase64ToString = encodeBase64ToString;
 
@@ -310,14 +309,12 @@
   Base64EncoderIo.prototype.schemeCodes = parseBase64SchemeForEncoding("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/");
   //Base64EncoderIo.prototype.filled = false;
   Base64EncoderIo.prototype.write = function (bytes) {
-    var v = this.value;
-    v.push.apply(v, env.encodeBase64ChunkAlgorithm(bytes, this.cache, this.schemeCodes, false));
+    env.encodeBase64ChunkAlgorithm(bytes, this.value, this.cache, this.schemeCodes, false);
     //if (v.length) this.filled = true;
   };
   Base64EncoderIo.prototype.closed = false;
   Base64EncoderIo.prototype.close = function () {
-    var v = this.value;
-    v.push.apply(v, env.encodeBase64ChunkAlgorithm([], this.cache, this.schemeCodes, true));
+    env.encodeBase64ChunkAlgorithm([], this.value, this.cache, this.schemeCodes, true);
     //if (v.length) this.filled = true;
     this.closed = true;
   };
