@@ -17,6 +17,9 @@
   //   env.encodeCodePointsToUtf16ChunkAlgorithm
   //   env.encodeCodePointsToUtf16
   //
+  //   env.encodeCodePointsToUtf8ChunkAlgorithm
+  //   env.encodeCodePointsToUtf8
+  //
   //   env.encodeUtf16ToUtf8ChunkAlgorithm
   //   env.encodeUtf16ToUtf8
   //   env.encodeStringToUtf8
@@ -74,6 +77,47 @@
     return env.encodeCodePointsToUtf16ChunkAlgorithm(codePoints, [], {
       reservedCodePointError: function (o) { o.utf16Codes.push(o.codePoints[o.index]); },  // accept reserved code points (like in chrome)
       invalidCodePointError: function (o) { o.utf16Codes.push(0xFFFD); }  // force encoding to work
+    });
+  };
+
+  env.encodeCodePointsToUtf8ChunkAlgorithm = function (codePoints, utf8Codes, o) {
+    // codePoints = [...]
+    //   an array of code points (uint32)
+    // utf8Codes = []
+    //   where the utf8 codes (uint8) will be written
+    // o.reservedCodePointError({codePoints, utf8Codes, index}) - called if > U+D800 & < U+DFFF
+    // o.invalidCodePointError({codePoints, utf8Codes, index}) - called if > U+10FFFF
+    // returns utf8Codes
+
+    var i = 0, l = codePoints.length, code, b, c, d;
+    for (; i < l; i += 1) {
+      if ((code = codePoints[i]) <= 0x7F) utf8Codes.push(code);
+      else if (code <= 0x7FF) {
+        b = 0x80 | (code & 0x3F); code >>>= 6;
+        utf8Codes.push(0xC0 | (code & 0x1F), b); // a = (0x1E << (6 - 1)) | (code & (0x3F >> 1));
+      } else if (0xD800 <= code && code <= 0xDFFF) o.reservedCodePointError({codePoints: codePoints, utf8Codes: utf8Codes, index: i});
+      else if (code <= 0xFFFF) {
+        c = 0x80 | (code & 0x3F); code >>>= 6;
+        b = 0x80 | (code & 0x3F); code >>>= 6;
+        utf8Codes.push(0xE0 | (code & 0xF), b, c); // a = (0x1E << (6 - 2)) | (code & (0x3F >> 2));
+      } else if (code <= 0x10FFFF) {
+        d = 0x80 | (code & 0x3F); code >>>= 6;
+        c = 0x80 | (code & 0x3F); code >>>= 6;
+        b = 0x80 | (code & 0x3F); code >>>= 6;
+        utf8Codes.push(0xF0 | (code & 0x7), b, c, d); // a = (0x1E << (6 - 3)) | (code & (0x3F >> 3));
+      } else o.invalidCodePointError({codePoints: codePoints, utf8Codes: utf8Codes, index: i});
+    }
+    return utf8Codes;
+  };
+  env.encodeCodePointsToUtf8 = function (codePoints) {
+    return env.encodeCodePointsToUtf8ChunkAlgorithm(codePoints, [], {
+      invalidCodePointError: function (o) { o.utf8Codes.push(0xEF, 0xBF, 0xBD); },  // push code point error
+      reservedCodePointError: function (o) {  // accept reserved code points (like in chrome).
+        var code = o.codePoints[o.index], c, b;
+        c = 0x80 | (code & 0x3F); code >>>= 6;
+        b = 0x80 | (code & 0x3F); code >>>= 6;
+        o.utf8Codes.push(0xE0 | (code & 0xF), b, c); // a = (0x1E << (6 - 2)) | (code & (0x3F >> 2));
+      }
     });
   };
 
