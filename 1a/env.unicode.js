@@ -260,6 +260,21 @@
     return env.encodeCodePointToString.apply(env, env.decodeUtf8(bytes));
   };
 
+  //env.decodeFirstUtf8 = function (utf8Codes) {
+  //  // returns [codePoint, utf8Length]
+  //  function err(o) { o.codePoints.push(0xFFFD, 1); }
+  //  var i = 0, codePoints = [], cache = [], t = {
+  //    invalidStartByteError: err,
+  //    overlongEncodingError: function () { return true; },
+  //    unexpectedEndOfDataError: err,
+  //    invalidContinuationByteError: err
+  //  };
+  //  for (; codePoints.length === 0; i += 1)
+  //    env.decodeUtf8ChunkAlgorithm([utf8Codes[i]], codePoints, cache, t, i >= 3);
+  //  if (codePoints.length === 1) codePoints.push(i);
+  //  return codePoints;
+  //};
+
   // function viewCodePointToUtf8(code) {
   //   function tob(code, xcount) {
   //     return "x".repeat(xcount) + ("0000000" + code.toString(2)).slice(-(8 - xcount));
