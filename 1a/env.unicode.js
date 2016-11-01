@@ -128,9 +128,9 @@
     //   where the utf8 codes (uint8) will be written
     // cache = []
     //   used by the algorithm
-    // o.invalidStartCodeError({utf16Codes, utf8Codes, index}) - called on invalid surrogate start
-    // o.unexpectedEndOfDataError({utf16Codes, utf8Codes, index}) - called on incomplete surrogate pair
-    // o.invalidContinuationCodeError({utf16Codes, utf8Codes, index}) - called on invalid surrogate pair
+    // o.invalidStartCodeError({utf16Codes, utf8Codes, cache, index}) - called on invalid surrogate start
+    // o.unexpectedEndOfDataError({utf16Codes, utf8Codes, cache, index, requiredUtf16CodeAmount, requiredUtf16CodeIndex, lastUtf16Codes}) - called on incomplete surrogate pair
+    // o.invalidContinuationCodeError({utf16Codes, utf8Codes, cache, index, requiredUtf16CodeAmount, requiredUtf16CodeIndex, lastUtf16Codes}) - called on invalid surrogate pair
     // close = false (optional)
     // returns utf8Codes
 
@@ -143,25 +143,25 @@
           c1 = ((c1 - 0xd800) << 10) + (c - 0xdc00) + 0x10000;
           utf8Codes.push((c1 >> 18) | 0xf0, ((c1 >> 12) & 0x3f) | 0x80, ((c1 >> 6) & 0x3f) | 0x80, (c1 & 0x3f) | 0x80);
           cache.shift();
-        } else o.invalidContinuationCodeError({utf16Codes: utf16Codes, utf8Codes: utf8Codes, cache: cache, index: i, requiredUtf16CodeAmount: 2, utf16CodeIndex: 1});
+        } else o.invalidContinuationCodeError({utf16Codes: utf16Codes, utf8Codes: utf8Codes, cache: cache, index: i, requiredUtf16CodeAmount: 2, requiredUtf16CodeIndex: 1, lastUtf16Codes: [cache[0], c]});
       } else if (c <= 0x7F) utf8Codes.push(c);
       else if (c <= 0x7FF) utf8Codes.push((c >> 6) | 0xc0, (c & 0x3f) | 0x80);
       else if (0xd800 <= c && c <= 0xdbff) cache[0] = c;
       else if (0xdc00 <= c && c <= 0xdfff) o.invalidStartCodeError({utf16Codes: utf16Codes, utf8Codes: utf8Codes, cache: cache, index: i});
       else utf8Codes.push(((c >> 12) & 0xf) | 0xe0, ((c >> 6) & 0x3f) | 0x80, (c & 0x3f) | 0x80);
     }
-    if (close && cache.length) o.unexpectedEndOfDataError({utf16Codes: utf16Codes, utf8Codes: utf8Codes, cache: cache, index: utf16Codes.length, requiredUtf16CodeAmount: 2, utf16CodeIndex: 1});
+    if (close && cache.length) o.unexpectedEndOfDataError({utf16Codes: utf16Codes, utf8Codes: utf8Codes, cache: cache, index: utf16Codes.length, requiredUtf16CodeAmount: 2, requiredUtf16CodeIndex: 1, lastUtf16Codes: [cache[0]]});
     return utf8Codes;
   };
   env.encodeUtf16ToUtf8 = function (utf16Codes) {
     function pushCodePointError(o) { o.utf8Codes.push(0xEF, 0xBF, 0xBD); o.cache.splice(0); }
     function pushCodePointErrorAndDecodeMissedUtf16(o) {
       o.utf8Codes.push(0xEF, 0xBF, 0xBD); o.cache.splice(0);
-      this.algo(o.utf16Codes.slice(o.index - o.utf16CodeIndex + 1, o.index + 1), o.utf8Codes, o.cache, this, false);
+      this.algo(o.lastUtf16Codes.slice(1), o.utf8Codes, o.cache, this, false);
     }
     function pushCodePointErrorAndDecodeMissedUtf16AndClose(o) {
       o.utf8Codes.push(0xEF, 0xBF, 0xBD); o.cache.splice(0);
-      this.algo(o.utf16Codes.slice(o.index - o.utf16CodeIndex + 1), o.utf8Codes, o.cache, this, true);
+      this.algo([], o.utf8Codes, o.cache, this, true);
     }
     return env.encodeUtf16ToUtf8ChunkAlgorithm(utf16Codes, [], [], {
       algo: env.encodeUtf16ToUtf8ChunkAlgorithm,
@@ -184,11 +184,11 @@
     // cache = []
     //   used by the algorithm
     // o.invalidStartByteError({utf8Codes, utf16Codes, cache, index}) - called on invalid start byte
-    // o.overlongEncodingError({utf8Codes, utf16Codes, cache, index, requiredUtf8CodeAmount, utf8CodeIndex}) - called on overlong byte sequence
+    // o.overlongEncodingError({utf8Codes, utf16Codes, cache, index, requiredUtf8CodeAmount, requiredUtf8CodeIndex, lastUtf8Codes}) - called on overlong byte sequence
     //   if `overlongEncodingError` returns true, then the algorithm will continue
     //   to decode the current code point.
-    // o.unexpectedEndOfDataError({utf8Codes, utf16Codes, cache, index, requiredUtf8CodeAmount, utf8CodeIndex}) - called on unexpected on of data
-    // o.invalidContinuationByteError({utf8Codes, utf16Codes, cache, index, requiredUtf8CodeAmount, utf8CodeIndex}) - called on invalid continuation byte
+    // o.unexpectedEndOfDataError({utf8Codes, utf16Codes, cache, index, requiredUtf8CodeAmount, requiredUtf8CodeIndex, lastUtf8Codes}) - called on unexpected on of data
+    // o.invalidContinuationByteError({utf8Codes, utf16Codes, cache, index, requiredUtf8CodeAmount, requiredUtf8CodeIndex, lastUtf8Codes}) - called on invalid continuation byte
     // close = false (optional)
     // returns codePoints
 
@@ -197,46 +197,46 @@
       code = utf8Codes[i];
       switch (cache[0]) {
         case 2:
-          if ((0xC0 & code) !== 0x80) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 2, utf8CodeIndex: 1});
-          else { codePoints.push(((cache[1] << 6) | (code & 0x3F)) & 0x7FF); cache.splice(0, 2); } break;
+          if ((0xC0 & code) !== 0x80) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 2, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]});
+          else { codePoints.push(((cache[1] << 6) | (code & 0x3F)) & 0x7FF); cache[0] = 0; } break;
         case 3:
-          if ((0xC0 & code) !== 0x80) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 3, utf8CodeIndex: 1});
-          else if ((c = cache[1]) === 0xE0 && code <= 0x9F && !o.overlongEncodingError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 3, utf8CodeIndex: 1})) {}
-          else { cache[0] = 31; cache[1] = (c << 6) | (code & 0x3F); } break;
+          if ((0xC0 & code) !== 0x80) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]});
+          else if ((c = cache[1]) === 0xE0 && code <= 0x9F && !o.overlongEncodingError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]})) {}
+          else { cache[3] = code; cache[1] = (c << 6) | (code & 0x3F); cache[0] = 31; } break;
         case 31:
-          if ((0xC0 & code) !== 0x80) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 3, utf8CodeIndex: 2});
-          else if (0xD800 <= (c = ((cache[1] << 6) | (code & 0x3F)) & 0xFFFF) && c <= 0xDFFF) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 3, utf8CodeIndex: 2});
-          else { codePoints.push(c); cache.splice(0, 2); } break;
+          if ((0xC0 & code) !== 0x80) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3], code]});
+          else if (0xD800 <= (c = ((cache[1] << 6) | (code & 0x3F)) & 0xFFFF) && c <= 0xDFFF) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3], code]});
+          else { codePoints.push(c); cache[0] = 0; } break;
         case 4:
-          if ((0xC0 & code) !== 0x80) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, utf8CodeIndex: 1});
-          else if ((c = cache[1]) === 0xF0 && code <= 0x8F && !o.overlongEncodingError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, utf8CodeIndex: 1})) {}
-          else { cache[0] = 41; cache[1] = (c << 6) | (code & 0x3F); } break;
+          if ((0xC0 & code) !== 0x80) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]});
+          else if ((c = cache[1]) === 0xF0 && code <= 0x8F && !o.overlongEncodingError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]})) {}
+          else { cache[3] = code; cache[1] = (c << 6) | (code & 0x3F); cache[0] = 41; } break;
         case 41:
-          if ((0xC0 & code) !== 0x80) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, utf8CodeIndex: 2});
-          else { cache[0] = 42; cache[1] = (cache[1] << 6) | (code & 0x3F); } break;
+          if ((0xC0 & code) !== 0x80) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3], code]});
+          else { cache[4] = code; cache[1] = (cache[1] << 6) | (code & 0x3F); cache[0] = 42; } break;
         case 42:
-          if ((0xC0 & code) !== 0x80) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, utf8CodeIndex: 3});
-          else { codePoints.push(((cache[1] << 6) | (code & 0x3F)) & 0x1FFFFF); cache.splice(0, 2); } break;
+          if ((0xC0 & code) !== 0x80) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 3, lastUtf8Codes: [cache[2], cache[3], cache[4], code]});
+          else { codePoints.push(((cache[1] << 6) | (code & 0x3F)) & 0x1FFFFF); cache[0] = 0; } break;
         default:
           if (code <= 0x7F) codePoints.push(code);
           else if ((0xE0 & code) === 0xC0) {
-            if (code < 0xC2 && !o.overlongEncodingError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 2, utf8CodeIndex: 0})) {}
-            else { cache[0] = 2; cache[1] = code; }
-          } else if ((0xF0 & code) === 0xE0) { cache[0] = 3; cache[1] = code; }
+            if (code < 0xC2 && !o.overlongEncodingError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 2, requiredUtf8CodeIndex: 0, lastUtf8Codes: [code]})) {}
+            else { cache[2] = cache[1] = code; cache[0] = 2; }
+          } else if ((0xF0 & code) === 0xE0) { cache[2] = cache[1] = code; cache[0] = 3; }
           else if ((0xF8 & code) === 0xF0) {
-            if (code >= 0xF5) o.invalidStartByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, utf8CodeIndex: 0});
-            else { cache[0] = 4; cache[1] = code; }
+            if (code >= 0xF5) o.invalidStartByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 0});
+            else { cache[2] = cache[1] = code; cache[0] = 4; }
           } else o.invalidStartByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i});
       }
     }
-    if (close && cache.length) {
+    if (close) {
       switch (cache[0]) {
-        case 2:  o.unexpectedEndOfDataError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 2, utf8CodeIndex: 1}); break;
-        case 3:  o.unexpectedEndOfDataError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 3, utf8CodeIndex: 1}); break;
-        case 31: o.unexpectedEndOfDataError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 3, utf8CodeIndex: 2}); break;
-        case 4:  o.unexpectedEndOfDataError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, utf8CodeIndex: 1}); break;
-        case 41: o.unexpectedEndOfDataError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, utf8CodeIndex: 2}); break;
-        case 42: o.unexpectedEndOfDataError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, utf8CodeIndex: 3}); break;
+        case 2:  o.unexpectedEndOfDataError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 2, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2]]}); break;
+        case 3:  o.unexpectedEndOfDataError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2]]}); break;
+        case 31: o.unexpectedEndOfDataError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3]]}); break;
+        case 4:  o.unexpectedEndOfDataError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2]]}); break;
+        case 41: o.unexpectedEndOfDataError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3]]}); break;
+        case 42: o.unexpectedEndOfDataError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 3, lastUtf8Codes: [cache[2], cache[3], cache[4]]}); break;
       }
     }
     return codePoints;
@@ -245,11 +245,11 @@
     function pushCodePointError(o) { o.codePoints.push(0xFFFD); o.cache.splice(0); }
     function pushCodePointErrorAndDecodeMissedUtf8(o) {
       o.codePoints.push(0xFFFD); o.cache.splice(0);
-      this.algo(o.utf8Codes.slice(o.index - o.utf8CodeIndex + 1, o.index + 1), o.codePoints, o.cache, this, false);
+      this.algo(o.lastUtf8Codes.slice(1), o.codePoints, o.cache, this, false);
     }
     function pushCodePointErrorAndDecodeMissedUtf8AndClose(o) {
       o.codePoints.push(0xFFFD); o.cache.splice(0);
-      this.algo(o.utf8Codes.slice(o.index - o.utf8CodeIndex + 1), o.codePoints, o.cache, this, true);
+      this.algo(o.lastUtf8Codes.slice(1), o.codePoints, o.cache, this, true);
     }
     return env.decodeUtf8ChunkAlgorithm(bytes, [], [], {
       algo: env.decodeUtf8ChunkAlgorithm,

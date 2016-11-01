@@ -43,7 +43,7 @@
     // returns {65:0,66:1,...43:62,47:63,61:64,32:65,9:66,13:67,10:68}
     var i = 0, d = {}, l = scheme.length;
     for (; i < l; i += 1) d[scheme.charCodeAt(i)] = i;
-    if (i <= 64) d["="] = 64;
+    if (i <= 64) d[61] = 64;
     return d;
   }
   env.parseBase64SchemeForDecoding = parseBase64SchemeForDecoding;
