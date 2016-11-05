@@ -64,11 +64,11 @@
           if ((code = schemeCodeMap[byte = inputBytes[i]]) < 0x10) { cache[3] = byte; cache[1] = code << 4; cache[0] = 2; }
           else if (code > 0x11) cache[0] = 0;  // closing ignorance, ignored byte
           else if (code === 0x11) cache[0] = 3;  // ignored byte
-          else o.invalidContinuationByteError({inputBytes: inputBytes, outputBytes: outputBytes, cache: cache, index: i, requiredByteAmount: 3, requiredByteIndex: 1, lastInputBytes: [cache[2], byte]});
+          else o.invalidContinuationByteError({inputBytes: inputBytes, outputBytes: outputBytes, cache: cache, schemeCodeMap: schemeCodeMap, index: i, requiredByteAmount: 3, requiredByteIndex: 1, lastInputBytes: [cache[2], byte]});
           break;
         case 2:
           if ((code = schemeCodeMap[byte = inputBytes[i]]) < 0x10) { outputBytes.push(cache[1] | code); cache[0] = 0; }
-          else o.invalidContinuationByteError({inputBytes: inputBytes, outputBytes: outputBytes, cache: cache, index: i, requiredByteAmount: 3, requiredByteIndex: 2, lastInputBytes: [cache[2], cache[3], byte]});
+          else o.invalidContinuationByteError({inputBytes: inputBytes, outputBytes: outputBytes, cache: cache, schemeCodeMap: schemeCodeMap, index: i, requiredByteAmount: 3, requiredByteIndex: 2, lastInputBytes: [cache[2], cache[3], byte]});
           break;
         case 3:  // ignorance state
           if ((code = schemeCodeMap[inputBytes[i]]) > 0x11) { cache[0] = 0; break; }  // closing ignorance
@@ -81,8 +81,8 @@
     }
     if (close) {
       switch (cache[0]) {
-        case 1: o.unexpectedEndOfDataError({inputBytes: inputBytes, outputBytes: outputBytes, cache: cache, index: i, requiredByteAmount: 3, requiredByteIndex: 1, lastInputBytes: [cache[2]]}); break;
-        case 2: o.unexpectedEndOfDataError({inputBytes: inputBytes, outputBytes: outputBytes, cache: cache, index: i, requiredByteAmount: 3, requiredByteIndex: 2, lastInputBytes: [cache[2], cache[3]]}); break;
+        case 1: o.unexpectedEndOfDataError({inputBytes: inputBytes, outputBytes: outputBytes, cache: cache, schemeCodeMap: schemeCodeMap, index: i, requiredByteAmount: 3, requiredByteIndex: 1, lastInputBytes: [cache[2]]}); break;
+        case 2: o.unexpectedEndOfDataError({inputBytes: inputBytes, outputBytes: outputBytes, cache: cache, schemeCodeMap: schemeCodeMap, index: i, requiredByteAmount: 3, requiredByteIndex: 2, lastInputBytes: [cache[2], cache[3]]}); break;
       }
     }
     return outputBytes;
@@ -100,8 +100,16 @@
       // built by a mix of `parseQuotedPrintableSchemeForDecoding("0123456789ABCDEF=\r\n")`
       //   and  `parseQuotedPrintableSchemeForDecoding("0123456789abcdef=\r\n")`
     }, {
-      invalidContinuationByteError: function (o) { o.outputBytes.push.apply(o.outputBytes, o.lastInputBytes); o.cache.splice(0); },
-      unexpectedEndOfDataError: function (o) { if (o.lastInputBytes.length > 1) o.outputBytes.push.apply(o.outputBytes, o.lastInputBytes); }
+      algo: env.decodeQuotedPrintableChunkAlgorithm,
+      invalidContinuationByteError: function (o) {
+        o.outputBytes.push([0x3D]);
+        o.cache.splice(0);
+        this.algo(o.lastInputBytes.slice(1), o.outputBytes, o.cache, o.schemeCodeMap, this, false);
+      },
+      unexpectedEndOfDataError: function (o) {
+        if (o.lastInputBytes.length > 1)
+          o.outputBytes.push.apply(o.outputBytes, o.lastInputBytes);
+      }
     }, true);
   }
   env.decodeQuotedPrintable = decodeQuotedPrintable;
@@ -134,11 +142,13 @@
     return this.value.splice(0, count);
   };
   QuotedPrintableDecoderIo.prototype.invalidContinuationByteError = function (o) {
-    o.outputBytes.push.apply(o.outputBytes, o.lastInputBytes);
+    o.outputBytes.push([0x3D]);
     o.cache.splice(0);
+    env.decodeQuotedPrintableChunkAlgorithm(o.lastInputBytes.slice(1), o.outputBytes, o.cache, o.schemeCodeMap, this, false);
   };
   QuotedPrintableDecoderIo.prototype.unexpectedEndOfDataError = function (o) {
-    if (o.lastInputBytes.length > 1) o.outputBytes.push.apply(o.outputBytes, o.lastInputBytes);
+    if (o.lastInputBytes.length > 1)
+      o.outputBytes.push.apply(o.outputBytes, o.lastInputBytes);
     o.cache.splice(0);
   };
   env.QuotedPrintableDecoderIo = QuotedPrintableDecoderIo;
