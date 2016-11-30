@@ -27,6 +27,9 @@
   //   env.decodeUtf8ChunkAlgorithm
   //   env.decodeUtf8
   //   env.decodeUtf8ToString
+  //
+  //   env.decodeExtendedAsciiCodesToCodePointsChunkAlgorithm
+  //   env.decodeExtendedAsciiCodesToCodePoints
 
   if (env.registerLib) env.registerLib(envUnicode);
 
@@ -297,5 +300,60 @@
   //   s.push(tmp);
   //   return s.join("\n");
   // }
+
+  env.decodeExtendedAsciiCodesToCodePointsChunkAlgorithm = function (extendedAsciiCodes, i, l, codePoints, events) {
+    // API stability level: 1 - Experimental
+
+    // XXX do documentation
+
+    // extendedAsciiCodes = [...]
+    //   an array of us ascii codes (uint8)
+    // i or from = 0
+    //   from which index to start reading extendedAsciiCodes
+    // l or to = extendedAsciiCodes.length
+    //   from which index to stop reading extendedAsciiCodes
+    // codePoints = []
+    //   where the code points (uint32) will be written
+    // events = []
+    //   XXX
+    // returns codePoints
+
+    // events:
+    //   error
+    //     invalid byte 1
+
+    var code, errorScheme = {  // externalize errorscheme ?
+      129:1,141:1,143:1,144:1,157:1
+    }, scheme = [  // externalize scheme ?
+      0x20AC,0xFFFD,0x201A,0x0192,0x201E,0x2026,0x2020,0x2021, // 0x80-0x87
+      0x02C6,0x2030,0x0160,0x2039,0x0152,0xFFFD,0x017D,0xFFFD, // 0x88-0x8F
+      0xFFFD,0x2018,0x2019,0x201C,0x201D,0x2022,0x2013,0x2014, // 0x90-0x97
+      0x02DC,0x2122,0x0161,0x203A,0x0153,0xFFFD,0x017E,0x0178  // 0x98-0x9F
+    ];
+    for (; i < l; i += 1) {
+      if ((code = extendedAsciiCodes[i]) <= 0x7F) codePoints.push(code);
+      else if (errorScheme[code]) { events.push({type: "error", message: "invalid byte", errno: 1, index: i}); return events; }
+      else if (code <= 0x9F) codePoints.push(scheme[code - 0x80]);
+      else codePoints.push(code);
+    }
+    return codePoints;
+  };
+
+  env.decodeExtendedAsciiCodesToCodePoints = function (extendedAsciiCodes) {
+    // API stability level: 1 - Experimental
+    // XXX do documentation
+    var i = 0, l = extendedAsciiCodes.length, codePoints = new Array(l), code, scheme = [
+      0x20AC,0xFFFD,0x201A,0x0192,0x201E,0x2026,0x2020,0x2021, // 0x80-0x87
+      0x02C6,0x2030,0x0160,0x2039,0x0152,0xFFFD,0x017D,0xFFFD, // 0x88-0x8F
+      0xFFFD,0x2018,0x2019,0x201C,0x201D,0x2022,0x2013,0x2014, // 0x90-0x97
+      0x02DC,0x2122,0x0161,0x203A,0x0153,0xFFFD,0x017E,0x0178  // 0x98-0x9F
+    ];
+    for (; i < l; i += 1) {
+      if ((code = extendedAsciiCodes[i]) <= 0x7F) codePoints[i] = code;
+      else if (code <= 0x9F) codePoints[i] = scheme[code - 0x80];
+      else codePoints[i] = code;
+    }
+    return codePoints;
+  };
 
 }(this.env));
