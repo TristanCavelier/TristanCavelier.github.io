@@ -2,7 +2,7 @@
 (function envTasks(env) {
   "use strict";
 
-  /*! Version 1.0.2
+  /*! Version 1.0.3
 
       Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
@@ -209,7 +209,7 @@
       return _resolve(value);
     }
     function reject(value) {
-      ths.reject = true;
+      ths.rejected = true;
       ths.value = value;
       return _reject(value);
     }
@@ -263,13 +263,13 @@
     // API stability level: 1 - Experimental
     var qt = new QuickTask(generatorFunction);
     if (qt.resolved) return qt.value;
-    if (qt.reject) throw qt.value;
+    if (qt.rejected) throw qt.value;
     return qt;
   };
   QuickTask.all = function (iterable) {
     for (var i = 0, l = iterable.length, a = new Array(l); i < l; i += 1) {
       if (iterable[i].resolved) a[i] = iterable[i].value;
-      else if (iterable[i].reject) throw iterable[i].value;
+      else if (iterable[i].rejected) throw iterable[i].value;
       else return env.Task.all(iterable);
     }
     return a;
@@ -286,8 +286,8 @@
     for (var t, i = 0, l = tasks.length; i < l; i += 1) {
       t = tasks[i];
       if (t && typeof t === "function") {
-        if (t.failed) throw t.value;
-        if (t.done) return t.value;
+        if (t.resolved) return t.value;
+        if (t.rejected) throw t.value;
       } else return t;
     }
     return Task.raceWinOrCancel(tasks);  // can be quicker ?
