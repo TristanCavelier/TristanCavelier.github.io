@@ -2,7 +2,7 @@
 (function envTasks(env) {
   "use strict";
 
-  /*! Version 1.0.3
+  /*! Version 1.0.4
 
       Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
@@ -42,6 +42,11 @@
       promise.resume = res;
       return promise;
     }
+    function free() {
+      delete ths["[[TaskPending]]"];
+      delete ths["[[TaskCancelled]]"];
+      delete ths["[[TaskPaused]]"];
+    }
     function rec(method, prev) {
       ths["[[TaskPending]]"] = null;
       if (ths["[[TaskCancelled]]"]) return reject(new Error("task cancelled"));
@@ -50,10 +55,14 @@
       try { next = g[method](prev); } catch (e) { return reject(e); }
       done = next.done;
       ths["[[TaskPending]]"] = next = next.value;
-      if (ths["[[TaskCancelled]]"] && next && typeof next.then === "function" && typeof next.cancel === "function") { try { next.cancel(); } catch (e) { return reject(e); } }
-      if (ths["[[TaskPaused]]"] && next && typeof next.then === "function" && typeof next.pause === "function") { try { next.pause(); } catch (e) { return reject(e); } }
-      if (done) return resolve(next);
-      if (!next || typeof next.then !== "function") next = env.Promise.resolve(next);
+      if (next && typeof next.then === "function") {
+        if (ths["[[TaskCancelled]]"] && typeof next.cancel === "function") { try { next.cancel(); } catch (e) { return reject(e); } }
+        if (ths["[[TaskPaused]]"] && typeof next.pause === "function") { try { next.pause(); } catch (e) { return reject(e); } }
+        if (done) { next.then(free, free); return resolve(next); }
+      } else {
+        if (done) { free(); return resolve(next); }
+        next = env.Promise.resolve(next);
+      }
       return next.then(function (v) { rec("next", v); }, function (v) { rec("throw", v); });
     }
     this["[[TaskPromise]]"] = env.newPromise(function (r, j) { resolve = r; reject = j; });
@@ -204,14 +213,21 @@
       return promise;
     }
     function resolve(value) {
+      //if (value && typeof value.then === "function") { return value.then(resolve, reject); }
       ths.resolved = true;
       ths.value = value;
       return _resolve(value);
     }
     function reject(value) {
+      //if (value && typeof value.then === "function") { return value.then(resolve, reject); }
       ths.rejected = true;
       ths.value = value;
       return _reject(value);
+    }
+    function free() {
+      delete ths["[[TaskPending]]"];
+      delete ths["[[TaskCancelled]]"];
+      delete ths["[[TaskPaused]]"];
     }
     function rec(method, prev) {
       var next, done;
@@ -222,13 +238,23 @@
         try { next = g[method](prev); } catch (e) { return reject(e); }
         done = next.done;
         ths["[[TaskPending]]"] = next = next.value;
-        if (ths["[[TaskCancelled]]"] && next && typeof next.then === "function" && typeof next.cancel === "function") { try { next.cancel(); } catch (e) { return reject(e); } }
-        if (ths["[[TaskPaused]]"] && next && typeof next.then === "function" && typeof next.pause === "function") { try { next.pause(); } catch (e) { return reject(e); } }
-        if (done) return resolve(next);
-        if (next && typeof next.then === "function")
-          return next.then(function (v) { rec("next", v); }, function (v) { rec("throw", v); });
-        prev = next;
-        method = "next";
+        if (next && typeof next.then === "function") {
+          if (next.resolved) {
+            if (done) { free(); return resolve(next.value); }
+            prev = next.value; method = "next";
+          } else if (next.rejected) {
+            if (done) { free(); return reject(next.value); }
+            prev = next.value; method = "throw";
+          } else {
+            if (ths["[[TaskCancelled]]"] && typeof next.cancel === "function") { try { next.cancel(); } catch (e) { return reject(e); } }
+            if (ths["[[TaskPaused]]"] && typeof next.pause === "function") { try { next.pause(); } catch (e) { return reject(e); } }
+            if (done) { next.then(free, free); return next.then(resolve, reject); }
+            return next.then(function (v) { rec("next", v); }, function (v) { rec("throw", v); });
+          }
+        } else {
+          if (done) { free(); return resolve(next); }
+          prev = next; method = "next";
+        }
       }
     }
     this["[[TaskPromise]]"] = env.newPromise(function (r, j) { _resolve = r; _reject = j; });
@@ -268,7 +294,8 @@
   };
   QuickTask.all = function (iterable) {
     for (var i = 0, l = iterable.length, a = new Array(l); i < l; i += 1) {
-      if (iterable[i].resolved) a[i] = iterable[i].value;
+      if (!iterable[i] || typeof iterable[i].then !== "function") a[i] = iterable[i];
+      else if (iterable[i].resolved) a[i] = iterable[i].value;
       else if (iterable[i].rejected) throw iterable[i].value;
       else return env.Task.all(iterable);
     }
@@ -276,7 +303,8 @@
   };
   QuickTask.race = function (iterable) {
     for (var i = 0, l = iterable.length; i < l; i += 1) {
-      if (iterable[i].resolved) return iterable[i].value;
+      if (!iterable[i] || typeof iterable[i].then !== "function") return iterable[i];
+      else if (iterable[i].resolved) return iterable[i].value;
       else if (iterable[i].rejected) throw iterable[i].value;
     }
     return env.Task.race(iterable);
