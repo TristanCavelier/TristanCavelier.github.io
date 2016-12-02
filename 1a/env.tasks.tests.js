@@ -98,6 +98,25 @@
       end();
     };
   });
+  test("task: how to be as synchronous as possible", 300, ["start", "value 1", "tic end", "value 2", "value 3"], function (res, end) {
+    // test preparation
+    var i = 0;
+    function* quick(v) { if (v && typeof v.then === "function") v = yield v; return v; }
+    function sometimeAsync() { if ((i++) % 2) return env.Promise.resolve(i); return i; }
+    // actual test
+    new env.Task(function* () {
+      var v;
+      res.push("start");
+      v = yield* quick(sometimeAsync());
+      res.push("value " + v);
+      v = yield* quick(sometimeAsync());
+      res.push("value " + v);
+      v = yield* quick(sometimeAsync());
+      res.push("value " + v);
+      end();
+    });
+    res.push("tic end");
+  });
   test("task: race win or cancel should cancel just after first wins", 300, ["closed", "wins", "closed"], function (res, end) {
     // test preparation
     function mkdefer() {
