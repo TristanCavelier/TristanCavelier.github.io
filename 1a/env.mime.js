@@ -42,6 +42,18 @@
   //   env.parseMimeTypeToList
   //   env.sanitizeMimeType
   //
+  //   ==> Cache Control <==
+  //   env.extractNameValueFromCacheControlParam
+  //   env.parseCacheControlParam
+  //   env.parseAndRemapEachCacheControlParam
+  //   env.parseEachCacheControlParamToList
+  //   env.parseEachCacheControlParamToDict
+  //   env.extractCacheControlParamListFromText
+  //   env.parseCacheControl
+  //   env.parseCacheControlToList
+  //   env.parseCacheControlToDict
+  //   env.sanitizeCacheControl
+  //
   //   ==> Data URI <==
   //   env.parseDataUri
 
@@ -1017,6 +1029,62 @@
     }
     // XXX should we sort the parameters ?
     return [text].concat(o.plist).join(";");
+  };
+
+  ///////////////////
+  // Cache Control //
+  ///////////////////
+
+  env.extractNameValueFromCacheControlParam = env.extractNameValueFromMimeTypeParam;
+  env.parseCacheControlParam = env.parseMimeTypeParam;
+  env.parseAndRemapEachCacheControlParam = env.parseAndRemapEachMimeTypeParam;
+  env.parseEachCacheControlParamToList = function (paramList) {
+    // API stability level: 1 - Experimental
+    // paramList = [" MAX-AGE = 0 ", " PRIVATE"]
+    // Returns -> ["max-age", "0", "private", null]
+    var i = 0, j = 0, l = paramList.length, r = new Array(l * 2), p = null;
+    for (; i < l; ++i, j += 2) {
+      p = env.parseCacheControlParam(paramList[i]);
+      r[j] = p.name;
+      r[j + 1] = p.value;
+    }
+    return r;
+  };
+  env.parseEachCacheControlParamToDict = env.parseEachMimeTypeParamToDict;
+  env.extractCacheControlParamListFromText = function (text) {
+    // API stability level: 1 - Experimental
+    // text = " MAX-AGE = 0 , PRIVATE"
+    // Returns -> [" MAX-AGE = 0 ", " PRIVATE"]
+    return text.split(",");
+  };
+  env.parseCacheControl = function (text) {
+    // API stability level: 1 - Experimental
+    // text = " MAX-AGE = 0 , PRIVATE"
+    // Returns -> [{name:"max-age", value:"0"}, {name:"private", value:null}]
+    return env.parseAndRemapEachCacheControlParam(env.extractCacheControlParamListFromText(text));
+  };
+  env.parseCacheControlToList = function (text) {
+    // API stability level: 1 - Experimental
+    // text = " MAX-AGE = 0 , PRIVATE"
+    // Returns -> ["max-age", "0", "private", null]
+    return env.parseEachCacheControlParamToList(env.extractCacheControlParamListFromText(text));
+  };
+  env.parseCacheControlToDict = function (text) {
+    // API stability level: 1 - Experimental
+    // text = " MAX-AGE = 0 , PRIVATE"
+    // Returns -> {"max-age": "0", private: null}
+    return env.parseEachCacheControlParamToDict(env.extractCacheControlParamListFromText(text));
+  };
+  env.sanitizeCacheControl = function (text) {
+    // API stability level: 1 - Experimental
+    // text = " MAX-AGE = 0 , PRIVATE"
+    // Returns -> "max-age=0,private"
+    var o = env.parseCacheControl(text), i = 0, l = o.length;
+    for (; i < l; ++i) {
+      if (o[i].value === null) o[i] = o[i].name;
+      else o[i] = o[i].name + "=" + o[i].value;
+    }
+    return o.join(",");
   };
 
   //////////////
