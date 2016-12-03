@@ -12,12 +12,15 @@
       http://www.wtfpl.net/ for more details. */
 
   // provides:
+  //   ==> MIME Headers <==
   //   env.parseMimeHeadersChunkAlgorithm
   //   env.parseMimeHeaders
   //
+  //   ==> MIME <==
   //   env.parseMimeChunkAlgorithm
   //   env.parseMime
   //
+  //   ==> Multipart <==
   //   env.searchPatternsChunkAlgorithm  // XXX should be move somewhere else ?
   //
   //   env.parseMultipartBoundarySplitChunkAlgorithm
@@ -25,7 +28,21 @@
   //   env.parseMultipartChunkAlgorithm
   //   env.parseMultipart
   //
-  //   env.parseMediaType
+  //   ==> MIME Type <==
+  //   env.extractNameValueFromMimeTypeParam
+  //   env.parseMimeTypeParam
+  //   env.parseAndRemapEachMimeTypeParam
+  //   env.parseEachMimeTypeParamToList
+  //   env.parseEachMimeTypeParamToDict
+  //   env.extractTypeFromMimeType
+  //   env.parseMimeTypeType
+  //   env.extractAndParseTypeFromMimeType
+  //   env.extractTypePlistFromMimeType
+  //   env.parseMimeType
+  //   env.parseMimeTypeToList
+  //   env.sanitizeMimeType
+  //
+  //   ==> Data URI <==
   //   env.parseDataUri
 
   if (env.registerLib) env.registerLib(envMime);
@@ -114,9 +131,9 @@
   //  return views.length;
   //}
 
-  /////////////
-  // Parsers //
-  /////////////
+  //////////////////
+  // MIME Headers //
+  //////////////////
 
   env.parseMimeHeadersChunkAlgorithm = function (bytes, i, l, events, cache, close) {
     // API stability level: 1 - Experimental
@@ -326,6 +343,10 @@
     return rawHeaders;
   };
 
+  //////////
+  // MIME //
+  //////////
+
   env.parseMimeChunkAlgorithm = function (bytes, i, l, events, cache, close) {
     // API stability level: 1 - Experimental
 
@@ -464,6 +485,10 @@
     }
     return res;
   };
+
+  ///////////////
+  // Multipart //
+  ///////////////
 
   env.searchPatternsChunkAlgorithm = function (bytes, i, l, events, patternBytesList, cache, close) {
     // API stability level: 1 - Experimental
@@ -853,85 +878,150 @@
     return res;
   };
 
-  env.parseMediaType = function (text) {
+  ///////////////
+  // MIME Type //
+  ///////////////
+
+  // This implementation does not follow any RFCs, it just splits the MIME type
+  // by `;` with simple `String.prototype.split` like chromium does in Data URI
+  // to improve its speed. Here, there is no Quoted values nor value continuation.
+  // To have a sample of code using last RFCs - see golang.org/pkg/mime
+
+  env.extractNameValueFromMimeTypeParam = function (text) {
     // API stability level: 1 - Experimental
-
-    // XXX do document
-
-    // This does not follow last rfc - you can see code sample at golang.org/pkg/mime
-    // This follows chromium behavior when invoking DataURL in the omni bar
-
-    // text ->
-    //   "text/plain;charset=utf-8"
-    //   or " TEXT / PLAIN ; CHARSET = UTF-8 "
-    // returns ->
-    //   {type: "text/plain",
-    //    maintype: "text",
-    //    subtype: "plain",
-    //    plist: ["charset=UTF-8"],
-    //    params: {charset: "UTF-8"}}
-
-    var type = "", maintype = "", subtype = "", plist = [], params = {}, i = 0, l = text.length, li = 0, name = "", value = "", s = 0;
-    for (; i < l; i += 1) {
-      if (text[i] === "/") {
-        if (s === 0) {
-          maintype = text.slice(0, i).trim().toLowerCase();
-          li = i + 1;
-          s = 1;
-        }
-      } else if (text[i] === ";") {
-        if (s === 0) {
-          maintype = type = text.slice(0, i).trim().toLowerCase();
-        } else {
-          subtype = text.slice(li, i).trim().toLowerCase();
-          type = maintype + "/" + subtype;
-          s = 0;
-        }
-        li = (++i);
-        break;
-      }
-    }
-    if (i < l) {
-      do {
-        switch (text[i]) {
-          case "=":
-            if (s === 0) {
-              name = text.slice(li, i);
-              s = 1;
-            }
-            break;
-          case ";":
-            if (s === 0) {
-              plist.push(name = text.slice(li, i).trim().toLowerCase());
-              params[name] = null;
-            } else {
-              s = li + name.length + 1;
-              params[name = name.trim().toLowerCase()] = value = text.slice(s, i).trim();
-              plist.push(name + "=" + value);
-              s = 0;
-            }
-            li = i + 1;
-        }
-      } while (++i < l);
-      if (s === 0) {
-        plist.push(name = text.slice(li, i).trim().toLowerCase());
-        params[name] = null;
-      } else {
-        s = li + name.length + 1;
-        params[name = name.trim().toLowerCase()] = value = text.slice(s, i).trim();
-        plist.push(name + "=" + value);
-        s = 0;
-      }
-    }
-
-    return {
-      type: type,
-      maintype: maintype,
-      subtype: subtype,
-      plist: plist,
-      params: params
-    }
+    // text = " CHARSET = UTF-8 "
+    // Returns -> {name:" CHARSET ", value:" UTF-8 "}
+    // text = " BASE64"
+    // Returns -> {name:" BASE64", value:null}
+    for (var i = 0, l = text.length; i < l; ++i)
+      if (text[i] === "=")
+        return {name: text.slice(0, i), value: text.slice(i + 1)};
+    return {name: text, value: null};
   };
+  env.parseMimeTypeParam = function (text) {
+    // API stability level: 1 - Experimental
+    // text = " CHARSET = UTF-8 "
+    // Returns -> {name:"charset", value:"UTF-8"}
+    // text = " BASE64"
+    // Returns -> {name:"base64", value:null}
+    for (var i = 0, l = text.length; i < l; ++i)
+      if (text[i] === "=")
+        return {name: text.slice(0, i).trim().toLowerCase(), value: text.slice(i + 1).trim()};
+    return {name: text.trim().toLowerCase(), value: null};
+  };
+
+  env.parseAndRemapEachMimeTypeParam = function (paramList) {
+    // API stability level: 1 - Experimental
+    // paramList = [" CHARSET = UTF-8 ", " BASE64"]
+    // Returns -> [{name:"charset", value:"UTF-8"}, {name:"base64", value:null}]
+    for (var i = 0, l = paramList.length; i < l; ++i)
+      paramList[i] = env.parseMimeTypeParam(paramList[i]);
+    return paramList;
+  };
+  env.parseEachMimeTypeParamToList = function (paramList) {
+    // API stability level: 1 - Experimental
+    // paramList = [" CHARSET = UTF-8 ", " BASE64"]
+    // Returns -> ["charset", "UTF-8", "base64", null]
+    var i = 0, j = 0, l = paramList.length, r = new Array(l * 2), p = null;
+    for (; i < l; ++i, j += 2) {
+      p = env.parseMimeTypeParam(paramList[i]);
+      r[j] = e.name;
+      r[j + 1] = e.value;
+    }
+    return r;
+  };
+  env.parseEachMimeTypeParamToDict = function (paramList) {
+    // API stability level: 1 - Experimental
+    // paramList = [" CHARSET = UTF-8 ", " BASE64"]
+    // Returns -> {charset: "UTF-8", base64: null}
+    var i = 0, l = paramList.length, r = {}, p = null;
+    for (; i < l; ++i) {
+      p = env.parseMimeTypeParam(paramList[i]);
+      r[p.name] = p.value;
+    }
+    return r;
+  };
+
+  env.extractTypeFromMimeType = function (text) {
+    // API stability level: 1 - Experimental
+    // text = " TEXT / PLAIN ; CHARSET = UTF-8 ; BASE64"
+    // Returns -> " TEXT / PLAIN "
+    return text.split(";", 1)[0];
+  };
+  env.parseMimeTypeType = function (text) {
+    // API stability level: 1 - Experimental
+    // text = " TEXT / PLAIN "
+    // Returns -> {maintype:"text", subtype:"plain"}
+    // text = " TEXT "
+    // Returns -> {maintype:"text", subtype: null}
+    for (var i = 0, l = text.length; i < l; ++i)
+      if (text[i] === "/")
+        return {
+          maintype: text.slice(0, i).trim().toLowerCase(),
+          subtype: text.slice(i + 1).trim().toLowerCase()
+        };
+    return {
+      maintype: text.trim().toLowerCase(),
+      subtype: null
+    };
+  };
+  env.extractAndParseTypeFromMimeType = function (text) {
+    // API stability level: 1 - Experimental
+    // text = " TEXT / PLAIN ; CHARSET = UTF-8 ; BASE64"
+    // Returns -> {maintype: "text", subtype: "plain"}
+    return env.parseMimeTypeType(env.extractMimeTypeType(text));
+  };
+
+  env.extractTypePlistFromMimeType = function (text) {
+    // API stability level: 1 - Experimental
+    // text = " TEXT / PLAIN ; CHARSET = UTF-8 ; BASE64"
+    // Returns -> {type:" TEXT / PLAIN ", plist:[" CHARSET = UTF-8 ", " BASE64"]}
+    text = text.split(";");
+    return {type: text[0], plist: text.slice(1)};
+  };
+  env.parseMimeType = function (text) {
+    // API stability level: 1 - Experimental
+    // text = " TEXT / PLAIN ; CHARSET = UTF-8 ; BASE64"
+    // Returns -> {
+    //   maintype: "text", subtype: "plain",
+    //   params: {charset:"UTF-8", "base64":null}
+    // }
+    var o = env.extractTypePlistFromMimeType(text), type = env.parseMimeTypeType(o.type);
+    return {
+      maintype: type.maintype,
+      subtype: type.subtype,
+      params: env.parseEachMimeTypeParamToDict(o.plist)
+    };
+  };
+  env.parseMimeTypeToList = function (text) {
+    // API stability level: 1 - Experimental
+    // text = " TEXT / PLAIN ; CHARSET = UTF-8 ; BASE64"
+    // Returns -> ["text", "plain", "charset", "UTF-8", "base64", null]
+    var o = env.extractTypePlistFromMimeType(text), type = env.parseMimeTypeType(o.type);
+    return [type.maintype, type.subtype].concat(env.parseEachMimeTypeParamToList(o.plist));
+  };
+
+  env.sanitizeMimeType = function (text) {
+    // API stability level: 1 - Experimental
+    // text = " TEXT / PLAIN ; CHARSET = UTF-8 ; BASE64"
+    // Returns -> "text/plain;charset=UTF-8;base64"
+    var o = env.extractTypePlistFromMimeType(text),
+        o2 = env.parseMimeTypeType(o.type),
+        i = 0, l = o.plist.length;
+    if (o2.subtype === null) text = o2.maintype;
+    else text = o2.maintype + "/" + o2.subtype;
+    for (; i < l; ++i) {
+      o2 = env.parseMimeTypeParam(o.plist[i]);
+      if (o2.value === null) o.plist[i] = o2.name;
+      else o.plist[i] = o2.name + "=" + o2.value;
+    }
+    // XXX should we sort the parameters ?
+    return [text].concat(o.plist).join(";");
+  };
+
+  //////////////
+  // Data URI //
+  //////////////
 
   env.parseDataUri = function (text) {
     // API stability level: 1 - Experimental
