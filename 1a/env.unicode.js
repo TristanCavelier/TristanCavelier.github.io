@@ -251,7 +251,7 @@
     var cont = true, ret = [], ee = [], e, cache = [], i = 0, ei = 0;
     while (cont) {
       cont = false;
-      env.decodeUtf8ChunkAlgorithm4(bytes, i, bytes.length, ret, false, ee, cache, true);
+      env.decodeUtf8ChunkAlgorithm(bytes, i, bytes.length, ret, false, ee, cache, true);
       if ((e = ee[ei]) !== undefined) {
         ei += 1;
         switch (e.errno) {
