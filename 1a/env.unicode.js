@@ -179,107 +179,104 @@
     return env.encodeUtf16ToUtf8(utf16Codes);
   };
 
-  env.decodeUtf8ChunkAlgorithm = function (utf8Codes, codePoints, cache, o, close) {
+  env.decodeUtf8ChunkAlgorithm = function (utf8Codes, i, l, codePoints, allowOverlongEncoding, events, cache, close) {
     // utf8Codes = [...]
     //   an array of utf8 codes (uint8)
     // codePoints = []
     //   where the code points (uint32) will be written
     // cache = []
     //   used by the algorithm
-    // o.invalidStartByteError({utf8Codes, utf16Codes, cache, index}) - called on invalid start byte
-    // o.overlongEncodingError({utf8Codes, utf16Codes, cache, index, requiredUtf8CodeAmount, requiredUtf8CodeIndex, lastUtf8Codes}) - called on overlong byte sequence
-    //   if `overlongEncodingError` returns true, then the algorithm will continue
-    //   to decode the current code point.
-    // o.unexpectedEndOfDataError({utf8Codes, utf16Codes, cache, index, requiredUtf8CodeAmount, requiredUtf8CodeIndex, lastUtf8Codes}) - called on unexpected on of data
-    // o.invalidContinuationByteError({utf8Codes, utf16Codes, cache, index, requiredUtf8CodeAmount, requiredUtf8CodeIndex, lastUtf8Codes}) - called on invalid continuation byte
-    // close = false (optional)
+    // events = []
+    //   where the errors will be given
+    // close = false
     // returns codePoints
 
-    var i = 0, l = utf8Codes.length, code, c;
+    // events :
+    //   error
+    //     invalid start byte 1
+    //     invalid continuation byte 2
+    //     overlong encoding 3
+    //     unexpected end of data 4
+
+    var code, c;
     for (; i < l; i += 1) {
       code = utf8Codes[i];
       switch (cache[0]) {
         case 2:
-          if ((0xC0 & code) !== 0x80) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 2, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]});
+          if ((0xC0 & code) !== 0x80) { events.push({type: "error", message: "invalid continuation byte", errno: 2, index: i, requiredUtf8CodeAmount: 2, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]}); return codePoints; }
           else { codePoints.push(((cache[1] << 6) | (code & 0x3F)) & 0x7FF); cache[0] = 0; } break;
         case 3:
-          if ((0xC0 & code) !== 0x80) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]});
-          else if ((c = cache[1]) === 0xE0 && code <= 0x9F && !o.overlongEncodingError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]})) {}
+          if ((0xC0 & code) !== 0x80) { events.push({type: "error", message: "invalid continuation byte", errno: 2, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]}); return codePoints; }
+          else if ((c = cache[1]) === 0xE0 && code <= 0x9F && !allowOverlongEncoding) { events.push({type: "error", message: "overlong encoding", errno: 3, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]}); return codePoints; }
           else { cache[3] = code; cache[1] = (c << 6) | (code & 0x3F); cache[0] = 31; } break;
         case 31:
-          if ((0xC0 & code) !== 0x80) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3], code]});
-          else if (0xD800 <= (c = ((cache[1] << 6) | (code & 0x3F)) & 0xFFFF) && c <= 0xDFFF) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3], code]});
+          if ((0xC0 & code) !== 0x80) { events.push({type: "error", message: "invalid continuation byte", errno: 2, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3], code]}); return codePoints; }
+          else if (0xD800 <= (c = ((cache[1] << 6) | (code & 0x3F)) & 0xFFFF) && c <= 0xDFFF) { events.push({type: "error", message: "invalid continuation byte", errno: 2, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3], code]}); return codePoints; }
           else { codePoints.push(c); cache[0] = 0; } break;
         case 4:
-          if ((0xC0 & code) !== 0x80) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]});
-          else if ((c = cache[1]) === 0xF0 && code <= 0x8F && !o.overlongEncodingError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]})) {}
+          if ((0xC0 & code) !== 0x80) { events.push({type: "error", message: "invalid continuation byte", errno: 2, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]}); return codePoints; }
+          else if ((c = cache[1]) === 0xF0 && code <= 0x8F && !allowOverlongEncoding) { events.push({type: "error", message: "overlong encoding", errno: 3, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]}); return codePoints; }
           else { cache[3] = code; cache[1] = (c << 6) | (code & 0x3F); cache[0] = 41; } break;
         case 41:
-          if ((0xC0 & code) !== 0x80) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3], code]});
+          if ((0xC0 & code) !== 0x80) { events.push({type: "error", message: "invalid continuation byte", errno: 2, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3], code]}); return codePoints; }
           else { cache[4] = code; cache[1] = (cache[1] << 6) | (code & 0x3F); cache[0] = 42; } break;
         case 42:
-          if ((0xC0 & code) !== 0x80) o.invalidContinuationByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 3, lastUtf8Codes: [cache[2], cache[3], cache[4], code]});
+          if ((0xC0 & code) !== 0x80) { events.push({type: "error", message: "invalid continuation byte", errno: 2, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 3, lastUtf8Codes: [cache[2], cache[3], cache[4], code]}); return codePoints; }
           else { codePoints.push(((cache[1] << 6) | (code & 0x3F)) & 0x1FFFFF); cache[0] = 0; } break;
         default:
           if (code <= 0x7F) codePoints.push(code);
           else if ((0xE0 & code) === 0xC0) {
-            if (code < 0xC2 && !o.overlongEncodingError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 2, requiredUtf8CodeIndex: 0, lastUtf8Codes: [code]})) {}
+            if (code < 0xC2 && !allowOverlongEncoding) { events.push({type: "error", message: "overlong encoding", errno: 3, index: i, requiredUtf8CodeAmount: 2, requiredUtf8CodeIndex: 0, lastUtf8Codes: [code]}); return codePoints; }
             else { cache[2] = cache[1] = code; cache[0] = 2; }
           } else if ((0xF0 & code) === 0xE0) { cache[2] = cache[1] = code; cache[0] = 3; }
           else if ((0xF8 & code) === 0xF0) {
-            if (code >= 0xF5) o.invalidStartByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 0});
+            if (code >= 0xF5) { events.push({type: "error", message: "invalid start byte", errno: 1, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 0}); return codePoints; }
             else { cache[2] = cache[1] = code; cache[0] = 4; }
-          } else o.invalidStartByteError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i});
+          } else { events.push({type: "error", message: "invalid start byte", errno: 1, index: i}); return codePoints; }
       }
     }
     if (close) {
       switch (cache[0]) {
-        case 2:  o.unexpectedEndOfDataError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 2, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2]]}); break;
-        case 3:  o.unexpectedEndOfDataError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2]]}); break;
-        case 31: o.unexpectedEndOfDataError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3]]}); break;
-        case 4:  o.unexpectedEndOfDataError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2]]}); break;
-        case 41: o.unexpectedEndOfDataError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3]]}); break;
-        case 42: o.unexpectedEndOfDataError({utf8Codes: utf8Codes, codePoints: codePoints, cache: cache, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 3, lastUtf8Codes: [cache[2], cache[3], cache[4]]}); break;
+        case 2:  events.push({type: "error", message: "unexpected end of data", errno: 4, index: i, requiredUtf8CodeAmount: 2, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2]]}); break;
+        case 3:  events.push({type: "error", message: "unexpected end of data", errno: 4, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2]]}); break;
+        case 31: events.push({type: "error", message: "unexpected end of data", errno: 4, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3]]}); break;
+        case 4:  events.push({type: "error", message: "unexpected end of data", errno: 4, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2]]}); break;
+        case 41: events.push({type: "error", message: "unexpected end of data", errno: 4, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3]]}); break;
+        case 42: events.push({type: "error", message: "unexpected end of data", errno: 4, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 3, lastUtf8Codes: [cache[2], cache[3], cache[4]]}); break;
       }
     }
     return codePoints;
   };
   env.decodeUtf8 = function (bytes) {
-    function pushCodePointError(o) { o.codePoints.push(0xFFFD); o.cache.splice(0); }
-    function pushCodePointErrorAndDecodeMissedUtf8(o) {
-      o.codePoints.push(0xFFFD); o.cache.splice(0);
-      this.algo(o.lastUtf8Codes.slice(1), o.codePoints, o.cache, this, false);
+    var cont = true, ret = [], ee = [], e, cache = [], i = 0, ei = 0;
+    while (cont) {
+      cont = false;
+      env.decodeUtf8ChunkAlgorithm4(bytes, i, bytes.length, ret, false, ee, cache, true);
+      if ((e = ee[ei]) !== undefined) {
+        ei += 1;
+        switch (e.errno) {
+          case 1:  // "invalid start byte"
+            ret.push(0xFFFD);
+            cache.splice(0);
+            i = e.index + 1;
+            cont = i < bytes.length;
+            break;
+          case 4:  // "unexpected end of data"
+            e.index -= 1;
+          case 2:  // "invalid continuation byte"
+          case 3:  // "overlong encoding"
+            ret.push(0xFFFD);
+            cache.splice(0);
+            i = e.index + 2 - e.lastUtf8Codes.length;
+            cont = i < bytes.length;
+        }
+      }
     }
-    function pushCodePointErrorAndDecodeMissedUtf8AndClose(o) {
-      o.codePoints.push(0xFFFD); o.cache.splice(0);
-      this.algo(o.lastUtf8Codes.slice(1), o.codePoints, o.cache, this, true);
-    }
-    return env.decodeUtf8ChunkAlgorithm(bytes, [], [], {
-      algo: env.decodeUtf8ChunkAlgorithm,
-      invalidStartByteError: pushCodePointError,
-      overlongEncodingError: pushCodePointErrorAndDecodeMissedUtf8,
-      invalidContinuationByteError: pushCodePointErrorAndDecodeMissedUtf8,
-      unexpectedEndOfDataError: pushCodePointErrorAndDecodeMissedUtf8AndClose
-    }, true);
+    return ret;
   };
   env.decodeUtf8ToString = function (bytes) {
     return env.encodeCodePointToString.apply(env, env.decodeUtf8(bytes));
   };
-
-  //env.decodeFirstUtf8 = function (utf8Codes) {
-  //  // returns [codePoint, utf8Length]
-  //  function err(o) { o.codePoints.push(0xFFFD, 1); }
-  //  var i = 0, codePoints = [], cache = [], t = {
-  //    invalidStartByteError: err,
-  //    overlongEncodingError: function () { return true; },
-  //    unexpectedEndOfDataError: err,
-  //    invalidContinuationByteError: err
-  //  };
-  //  for (; codePoints.length === 0; i += 1)
-  //    env.decodeUtf8ChunkAlgorithm([utf8Codes[i]], codePoints, cache, t, i >= 3);
-  //  if (codePoints.length === 1) codePoints.push(i);
-  //  return codePoints;
-  //};
 
   // function viewCodePointToUtf8(code) {
   //   function tob(code, xcount) {
