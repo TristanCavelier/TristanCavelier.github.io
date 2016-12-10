@@ -12,97 +12,427 @@
   /*jslint vars: true */
   var info = function () { console.info.apply(console, arguments); };
   var error = function () { console.error.apply(console, arguments); };
-  function test(name, taskFn, timeout) {
-    return env.Task.raceWinOrCancel([
-      new env.Task(taskFn),
-      env.Task.sequence([env.sleep.bind(null, timeout || 1000), function () { throw new Error("test timeout (" + name + ")"); }])
-    ]).catch(function (v) {
-      info(name);
-      error(v);
+  function rep(k, v) {
+    if (v === undefined) return "\xa0undefined\xa0";
+    if (typeof v === "number") {
+      if (v === Infinity) return "\xa0Infinity\xa0";
+      if (v === -Infinity) return "\xa0-Infinity\xa0";
+      if (isNaN(v)) return "\xa0NaN\xa0";
+    }
+    return v;
+  }
+  function json(o) { return JSON.stringify(o, rep); }
+  function test(name, timeout, expected, testFn) {
+    var res = [], timer;
+    function end() {
+      if (timer === undefined) return error("test `" + name + "`, `end` called twice");
+      timer = clearTimeout(timer);  // timer should be set to undefined
+      if (json(res, rep) !== json(expected, rep)) {
+        error("test `" + name + "`, result `" + json(res, rep) + "` !== `" + json(expected, rep) + "` expected");
+      }
+    }
+    timer = setTimeout(function () {
+      try { if (typeof end.onbeforetimeout === "function") end.onbeforetimeout(); }
+      catch (e) { error("test: " + name + ", error on before timeout ! `" + e + "`"); }
+      if (timer === undefined) return;  // it has ended in before timeout
+      error("test `" + name + "`, timeout ! result `" + json(res, rep) + "` <-> `" + json(expected, rep) + "` expected");
+    }, timeout);
+    setTimeout(function () {
+      try { testFn(res, end); }
+      catch (e) { error("test `" + name + "`, error ! result `" + e + "`"); }
     });
   }
+  function sleep(ms) { return env.newPromise(function (resolve) { setTimeout(resolve, ms); }); }
+  function then(fn) { try { return env.Promise.resolve(typeof fn === "function" ? fn() : undefined); } catch (e) { return env.Promise.reject(e); } }
+  function toThenable(v) { if (v && typeof v.then === "function") return v; return env.Promise.resolve(v); }
+  function task(gf) { return new env.Task(gf); }
 
   //////////////////////////////////////////////
   // Channel tests
-  test("'next' gets sent value", function* () {
-    var chan = env.newChannel(), t1 = chan.send("test1 coucou"), v;
-    v = yield chan.next();
-    if (v.value !== "test1 coucou") { throw "wrong value"; }
-    yield t1;
+  test("'channel.getLength' starts with length 0", 1000, [0, 0, 0, 0], function (res, end) {
+    res.push(env.newChannel().getLength());
+    res.push(env.newChannel(0).getLength());
+    res.push(env.newChannel(5).getLength());
+    res.push(env.newChannel(Infinity).getLength());
+    end();
   });
-  test("same with buffered channel", function* () {
-    var chan = env.newChannel(1), v;
-    yield chan.send("test3 coucou");
-    v = yield chan.next();
-    if (v.value !== "test3 coucou") { throw "wrong value"; }
+  test("'channel.getLength' does not increase if capacity 0", 1000, [0, 0, 0, 0], function (res, end) {
+    // test init
+    var chan = env.newChannel();
+    // actual test
+    chan.send();
+    res.push(chan.getLength());
+    sleep(4).then(function () {
+      res.push(chan.getLength());
+      chan.next();
+      res.push(chan.getLength());
+      chan.next();
+      res.push(chan.getLength());
+      end();
+    });
   });
-  test("'next' can be cancelled without blocking another 'next' call", function* () {
-    var chan = env.newChannel(), nexting, nexting2, v;
-    nexting = chan.next();
-    nexting2 = chan.next();
-    nexting.catch(function () { return; });
-    nexting.cancel();
-    yield;
-    yield chan.send("yeah");
-    v = yield nexting2;
-    if (v.value !== "yeah") { throw "cancelled next still blocks anther next"; }
+  test("'channel.getLength' increase if capacity > 0 and decrease correctly", 1000, [1, 1, 0, 0], function (res, end) {
+    // test init
+    var chan = env.newChannel(5);
+    // actual test
+    chan.send();
+    res.push(chan.getLength());
+    sleep(4).then(function () {
+      res.push(chan.getLength());
+      chan.next();
+      res.push(chan.getLength());
+      chan.next();
+      res.push(chan.getLength());
+      end();
+    });
   });
-  test("'send' sends to waiting next", function* () {
-    var chan = env.newChannel(), t1, v;
-    t1 = chan.next();
-    yield chan.send("test2 coucou");
-    v = yield t1;
-    if (v.value !== "test2 coucou") { throw "wrong value"; }
+  test("'channel.getCapacity'", 1000, [0, 0, 5, 0, Infinity, 0, 0, 0, 1, 0, 0, 0], function (res, end) {
+    res.push(env.newChannel().getCapacity());
+    res.push(env.newChannel(0).getCapacity());
+    res.push(env.newChannel(5).getCapacity());
+    res.push(env.newChannel(-5).getCapacity());
+    res.push(env.newChannel(Infinity).getCapacity());
+    res.push(env.newChannel(-Infinity).getCapacity());
+    res.push(env.newChannel(NaN).getCapacity());
+    res.push(env.newChannel(null).getCapacity());
+    res.push(env.newChannel(true).getCapacity());
+    res.push(env.newChannel(false).getCapacity());
+    res.push(env.newChannel([]).getCapacity());
+    res.push(env.newChannel({}).getCapacity());
+    end();
   });
-  test("'close' a channel during waiting next", function* () {
+  test("'channel.isClosed' false at start, true at end", 1000, [false, true], function (res, end) {
+    var chan = env.newChannel();
+    res.push(chan.isClosed());
+    chan.close();
+    res.push(chan.isClosed());
+    end();
+  });
+  test("'channel.isClosed' true even if filled", 1000, [true], function (res, end) {
+    var chan = env.newChannel(1);
+    chan.send();
+    chan.close();
+    res.push(chan.isClosed());
+    end();
+  });
+  test("'channel.close' twice is ok", 1000, [], function (res, end) {
+    var chan = env.newChannel();
+    try {
+      chan.close();
+      chan.close();
+    } catch (e) {
+      res.push(e.message);
+    }
+    end();
+  });
+  test("'channel.close' makes 'next' to return object signaling closed", 1000, [undefined, true], function (res, end) {
+    var chan = env.newChannel();
+    chan.close();
+    then(function () {
+      return chan.next();
+    }).then(function (v) {
+      res.push(v.value, v.done);
+      end();
+    });
+  });
+  test("'channel.close' fulfills waiting 'next'", 1000, [undefined, true], function (res, end) {
+    var chan = env.newChannel();
+    then(function () {
+      chan.next();
+      return chan.next();
+    }).then(function (v) {
+      res.push(v.value, v.done);
+      end();
+    });
+    chan.close();
+  });
+  test("'channel.close' makes 'send' to throw", 1000, [true], function (res, end) {
+    var chan = env.newChannel();
+    chan.close();
+    then(function () {
+      return chan.send();
+    }).then(null, function (e) {
+      res.push(e instanceof Error);
+      end();
+    });
+  });
+  test("'channel.send' fulfilled on 'next'", 1000, ["start", "next", "send"], function (res, end) {
+    var chan = env.newChannel();
+    then(function () {
+      res.push("start");
+      return chan.send();
+    }).then(function () {
+      res.push("send");
+      end();
+    });
+    sleep(4).then(function () {
+      chan.next();
+      res.push("next");
+    });
+  });
+  test("'channel.send' fulfilled directly if capacity > 0", 1000, ["start", "send", "next"], function (res, end) {
+    var chan = env.newChannel(1);
+    then(function () {
+      res.push("start");
+      return chan.send();
+    }).then(function () {
+      res.push("send");
+    });
+    sleep(4).then(function () {
+      chan.next();
+      res.push("next");
+      end();
+    });
+  });
+  test("'channel.send' fulfilled after one send + next (cap = 1)", 1000, ["start", "send", "next", "send"], function (res, end) {
+    var chan = env.newChannel(1);
+    then(function () {
+      res.push("start");
+      return chan.send();
+    }).then(function () {
+      res.push("send");
+      return chan.send();
+    }).then(function () {
+      res.push("send");
+      end();
+    });
+    sleep(4).then(function () {
+      chan.next();
+      res.push("next");
+    });
+  });
+  test("'channel.send cancel' puts nothing on the channel", 1000, ["start", "cancelled"], function (res, end) {
+    var chan = env.newChannel(), s;
+    then(function () {
+      res.push("start");
+      return s = chan.send(2);
+    }).then(null, function () {
+      res.push("cancelled");
+      sleep(4).then(end);
+    });
+    sleep(4).then(function () {
+      s.cancel();
+      then(function () {
+        return chan.next();
+      }).then(function () {
+        res.push("next");
+        end();
+      });
+    });
+  });
+  test("'channel.send cancel' after next does nothing", 1000, ["start", "next"], function (res, end) {
+    var chan = env.newChannel(), s;
+    then(function () {
+      res.push("start");
+      return s = chan.send(2);
+    }).then(null, function () {
+      res.push("cancelled");
+      sleep(4).then(end);
+    });
+    sleep(4).then(function () {
+      then(function () {
+        return chan.next();
+      }).then(function () {
+        res.push("next");
+        end();
+      });
+      s.cancel();
+    });
+  });
+  test("'channel.send iffree' returns synchronously false if not waiting for next", 1000, [false], function (res, end) {
+    var chan = env.newChannel();
+    res.push(chan.send(undefined, true));
+    end();
+  });
+  test("'channel.send iffree' returns synchronously true if waiting for next", 1000, [true], function (res, end) {
+    var chan = env.newChannel();
+    chan.next();
+    res.push(chan.send(undefined, true));
+    end();
+  });
+  test("'channel.send iffree' returns synchronously true if capacity > 0", 1000, [true, false], function (res, end) {
+    var chan = env.newChannel(1);
+    res.push(chan.send(undefined, true));
+    res.push(chan.send(undefined, true));
+    end();
+  });
+  test("'channel.send iffree' fulfills on going 'next'", 1000, ["send", 2, false], function (res, end) {
+    var chan = env.newChannel();
+    then(function () {
+      return chan.next();
+    }).then(function (v) {
+      res.push(v.value, v.done);
+      end();
+    });
+    sleep(4).then(function () {
+      chan.send(2, true);
+      res.push("send");
+    });
+  });
+  test("'channel.next' fulfilled on 'send' with sent value", 1000, ["start", "send", 2, false], function (res, end) {
+    var chan = env.newChannel();
+    then(function () {
+      res.push("start");
+      return chan.next();
+    }).then(function (v) {
+      res.push(v.value, v.done);
+      end();
+    });
+    sleep(4).then(function () {
+      chan.send(2);
+      res.push("send");
+    });
+  });
+  test("'channel.next' fulfilled after next+send+send", 1000, ["start", "send", 2, false, "send", 3, false], function (res, end) {
+    var chan = env.newChannel();
+    then(function () {
+      res.push("start");
+      return chan.next();
+    }).then(function (v) {
+      res.push(v.value, v.done);
+      return chan.next();
+    }).then(function (v) {
+      res.push(v.value, v.done);
+      end();
+    });
+    sleep(4).then(function () {
+      chan.send(2);
+      res.push("send");
+      sleep(4).then(function () {
+        chan.send(3);
+        res.push("send");
+      });
+    });
+  });
+  test("'channel.next+send' scenario", 1000, [3], function (res, end) {
+    var chan = env.newChannel(), s;
+    then(function () {
+      return chan.next();
+    }).then(function (v) {
+      s = v.value;
+      return chan.next();
+    }).then(function (v) {
+      res.push(v.value);
+    });
+    then(function () {
+      return chan.send(2);
+    }).then(function () {
+      return chan.send(s + 1);
+    }).then(function () {
+      sleep(4).then(end);
+    });
+  });
+  test("'channel.next cancel' make later 'send' waiting", 1000, ["start", "cancelled"], function (res, end) {
+    var chan = env.newChannel(), s;
+    then(function () {
+      res.push("start");
+      return s = chan.next();
+    }).then(null, function () {
+      res.push("cancelled");
+      sleep(4).then(end);
+    });
+    sleep(4).then(function () {
+      s.cancel();
+      then(function () {
+        return chan.send();
+      }).then(function () {
+        res.push("send");
+        end();
+      });
+    });
+  });
+  test("'channel.next iffilled' returns synchronously null if not sending", 1000, [null], function (res, end) {
+    var chan = env.newChannel();
+    res.push(chan.next(true));
+    end();
+  });
+  test("'channel.next iffilled' returns synchronously object value if sending", 1000, [2, false], function (res, end) {
     var chan = env.newChannel(), v;
-    env.sleep(100).then(chan.close.bind(chan));
-    v = yield chan.next();
-    if (v.done !== true) { throw "wrong value"; }
+    chan.send(2);
+    v = chan.next(true);
+    res.push(v.value, v.done);
+    end();
   });
-  //test("'Channel.select' gets first responding next", function* () {
-  //  var chan = env.newChannel(), chan2 = env.newChannel(), v;
-  //  env.sleep(100).then(chan.send.bind(chan, "test5 coucou"));
-  //  env.sleep(500).then(chan2.send.bind(chan2, "test5 hello"));
-  //  v = yield env.Channel.select([
-  //    [chan2, function () { error("should not happen"); }],
-  //    [chan, function (v) { return v.value; }]
-  //  ]);
-  //  if (v !== "test5 coucou") { throw "wrong value"; }
-  //});
-  //test("'Channel.select' gets run default if no next are available now", function* () {
-  //  var chan = env.newChannel(), chan2 = env.newChannel(), v;
-  //  env.sleep(100).then(chan.send.bind(chan, "test6 coucou"));
-  //  env.sleep(500).then(chan2.send.bind(chan2, "test6 hello"));
-  //  v = yield env.Channel.select([
-  //    [chan2, function () { error("should not happen"); }],
-  //    [chan, function (v) { return v; }],
-  //    function () { return "default"; }
-  //  ]);
-  //  if (v !== "default") { throw "wrong value"; }
-  //});
-  //test("'Channel.select' gets run available not default", function* () {
-  //  var chan = env.newChannel(), chan2 = env.newChannel(), v;
-  //  chan.send("test coucou")
-  //  env.sleep(500).then(chan2.send.bind(chan2, "test hello"));
-  //  v = yield env.Channel.select([
-  //    [chan2, function () { error("should not happen"); }],
-  //    [chan, function (v) { return v.value; }],
-  //    function () { return "default"; }
-  //  ]);
-  //  if (v !== "test coucou") { throw "wrong value"; }
-  //});
-  //test("'Channel.select' cancels next before calling callback", function* () {
-  //  var chan = env.newChannel(), chan2 = env.newChannel(), v;
-  //  env.sleep(100).then(chan.send.bind(chan, "test7 coucou")).then(0, error.bind(0, "should not happen"));
-  //  env.sleep(500).then(chan2.send.bind(chan2, "test7 hello")).then(error.bind(0, "should not happen"), error.bind(0, "should not happen"));
-  //  v = yield env.Channel.select([
-  //    [chan2, function () { error("should not happen"); }],
-  //    [chan, function (v) {
-  //      return env.sleep(600).then(function () { return v.value; });
-  //    }]
-  //  ]);
-  //  if (v !== "test7 coucou") { throw "wrong value"; }
-  //});
+  test("'channel.next iffilled' returns synchronously object value if length > 0", 1000, [2, false], function (res, end) {
+    var chan = env.newChannel(1), v;
+    chan.send(2, true);
+    v = chan.next(true);
+    res.push(v.value, v.done);
+    end();
+  });
+  test("'channel.next iffilled' fulfills on going 'send'", 1000, [2, false, "send"], function (res, end) {
+    var chan = env.newChannel();
+    then(function () {
+      return chan.send(2);
+    }).then(function() {
+      res.push("send");
+      end();
+    });
+    sleep(4).then(function () {
+      var v = chan.next(true);
+      res.push(v.value, v.done);
+    });
+  });
+  test("'Channel.select' gets first responding next without consuming other next", 1000, [true, 2, 33, false, 22, false], function (res, end) {
+    var chan1 = env.newChannel(),
+        chan2 = env.newChannel(),
+        chan3 = env.newChannel();
+    then(function () {
+      return env.Channel.select([chan1, chan2, chan3]);
+    }).then(function (v) {
+      res.push(v.channel === chan3, v.index, v.value, v.done);
+      v = chan2.next(true);
+      res.push(v.value, v.done);
+      end();
+    });
+    chan3.send(33);
+    chan2.send(22);
+  });
+  test("'Channel.select' gets first filled channel without consuming other next", 1000, [true, 1, 22, false, 33, false], function (res, end) {
+    var chan1 = env.newChannel(),
+        chan2 = env.newChannel(),
+        chan3 = env.newChannel();
+    chan3.send(33);
+    chan2.send(22);
+    then(function () {
+      return env.Channel.select([chan1, chan2, chan3]);
+    }).then(function (v) {
+      res.push(v.channel === chan2, v.index, v.value, v.done);
+      v = chan3.next(true);
+      res.push(v.value, v.done);
+      end();
+    });
+  });
+  test("'Channel.select cancel' cancels without consuming other next", 1000, ["cancelled"], function (res, end) {
+    var chan1 = env.newChannel(),
+        chan2 = env.newChannel(),
+        chan3 = env.newChannel(), s;
+    then(function () {
+      return s = env.Channel.select([chan1, chan2, chan3]);
+    }).then(null, function (e) {
+      res.push("cancelled");
+      end();
+    });
+    s.cancel();
+    chan3.send(33);
+    chan2.send(22);
+  });
+  test("'Channel.select iffilled' return synchronously null if no channel are filled", 1000, [null], function (res, end) {
+    var chan1 = env.newChannel(),
+        chan2 = env.newChannel(),
+        chan3 = env.newChannel();
+    res.push(env.Channel.select([chan1, chan2, chan3], true));
+    end();
+  });
+  test("'Channel.select iffilled' return synchronously first filled channel value", 1000, [true, 1, 22, false], function (res, end) {
+    var chan1 = env.newChannel(),
+        chan2 = env.newChannel(),
+        chan3 = env.newChannel(), v;
+    chan3.send(33);
+    chan2.send(22);
+    v = env.Channel.select([chan1, chan2, chan3], true);
+    res.push(v.channel === chan2, v.index, v.value, v.done);
+    end();
+  });
 
 }(this.env));
