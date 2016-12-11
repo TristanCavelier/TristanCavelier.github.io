@@ -31,7 +31,7 @@
     rs.on("close", function () { chan["[[ReadableStreamReader:error]]"] = chan["[[ReadableStreamReader:error]]"] || ReadableStreamReader.CLOSED_ERROR; rs.resume(); });
     rs.on("end", function () { chan["[[ReadableStreamReader:ended]]"] = true; });
   }
-  ReadableStreamReader.CLOSED_ERROR = ReadableStreamReader.prototype.CLOSED_ERROR = new Error("channel closed");
+  ReadableStreamReader.CLOSED_ERROR = ReadableStreamReader.prototype.CLOSED_ERROR = new Error("reader closed");
   ReadableStreamReader.prototype.read = taskify(function* (count) {
     //     read([count int]) array
     // `count === undefined` means "size of internal buffer"
