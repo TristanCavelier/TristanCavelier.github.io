@@ -20,8 +20,11 @@
         filepath = require("path"),
         task = gf => env.QuickTask.exec(gf),
         taskify = gf => {
-          var f = function () { return task(() => gf.apply(this, arguments)); };
-          f.toString = () => `taskify(${gf.toString()})`;
+          const f = function () { return task(() => gf.apply(this, arguments)); };
+          Object.defineProperty(f, "toString", {
+            value: () => `taskify(${gf.toString()})`,
+            configurable: true, writable: true
+          });
           return f;
         };
 
