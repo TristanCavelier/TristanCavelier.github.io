@@ -71,25 +71,22 @@
   env.symlinkFsNode = wrapNodeJsAsyncMethod(fs.symlink);
   env.linkFsNode = wrapNodeJsAsyncMethod(fs.link);  // XXX can we link a directory ?
 
-  var CLOSED_ERROR = env.Channel.CLOSED_ERROR;
-  var ENDED_ERROR = new Error("ended");
-
   function FsWriterChannel(path, options) {
     var rs = fs.createWriteStream(path, options), chan = this;
     this["[[FsWriterChannel:writeStream]]"] = rs;
     rs.on("error", function (err) { chan["[[FsWriterChannel:error]]"] = err; rs.end(); });
-    rs.on("finish", function () { chan["[[FsWriterChannel:error]]"] = chan["[[FsWriterChannel:error]]"] || CLOSED_ERROR; });
+    rs.on("finish", function () { chan["[[FsWriterChannel:error]]"] = chan["[[FsWriterChannel:error]]"] || FsWriterChannel.CLOSED_ERROR; });
   }
-  FsWriterChannel.CLOSED_ERROR = FsWriterChannel.prototype.CLOSED_ERROR = CLOSED_ERROR;
+  FsWriterChannel.CLOSED_ERROR = FsWriterChannel.prototype.CLOSED_ERROR = new Error("channel closed");
   FsWriterChannel.prototype.close = function () {
     var err = this["[[FsWriterChannel:error]]"]
     if (err) {
-      //if (err === CLOSED_ERROR) return env.Promise.resolve();
+      //if (err === FsWriterChannel.CLOSED_ERROR) return env.Promise.resolve();
       //return env.Promise.reject(err);
-      if (err === CLOSED_ERROR) return;
+      if (err === FsWriterChannel.CLOSED_ERROR) return;
       throw err;
     }
-    this["[[FsWriterChannel:error]]"] = CLOSED_ERROR;
+    this["[[FsWriterChannel:error]]"] = FsWriterChannel.CLOSED_ERROR;
     this["[[FsWriterChannel:writeStream]]"].end();
     //return env.Promise.resolve();
   };
@@ -114,18 +111,18 @@
     var rs = fs.createWriteStream(path, options), chan = this;
     this["[[FileWriter:writeStream]]"] = rs;
     rs.on("error", function (err) { chan["[[FileWriter:error]]"] = err; rs.end(); });
-    rs.on("finish", function () { chan["[[FileWriter:error]]"] = chan["[[FileWriter:error]]"] || CLOSED_ERROR; });
+    rs.on("finish", function () { chan["[[FileWriter:error]]"] = chan["[[FileWriter:error]]"] || FileWriter.CLOSED_ERROR; });
   }
-  FileWriter.CLOSED_ERROR = FileWriter.prototype.CLOSED_ERROR = CLOSED_ERROR;
+  FileWriter.CLOSED_ERROR = FileWriter.prototype.CLOSED_ERROR = new Error("channel closed");
   FileWriter.prototype.close = function () {
     var err = this["[[FileWriter:error]]"]
     if (err) {
-      //if (err === CLOSED_ERROR) return env.Promise.resolve();
+      //if (err === FileWriter.CLOSED_ERROR) return env.Promise.resolve();
       //return env.Promise.reject(err);
-      if (err === CLOSED_ERROR) return;
+      if (err === FileWriter.CLOSED_ERROR) return;
       throw err;
     }
-    this["[[FileWriter:error]]"] = CLOSED_ERROR;
+    this["[[FileWriter:error]]"] = FileWriter.CLOSED_ERROR;
     this["[[FileWriter:writeStream]]"].end();
     //return env.Promise.resolve();
   };
@@ -158,28 +155,28 @@
     if (pipes) { pipes.forEach(function (pipe) { rs = rs.pipe(pipe); }); }
     this["[[FsReaderChannel:readStream]]"] = rs;
     rs.on("error", function (err) { chan["[[FsReaderChannel:error]]"] = err; rs.close(); });
-    rs.on("close", function () { chan["[[FsReaderChannel:error]]"] = chan["[[FsReaderChannel:error]]"] || CLOSED_ERROR; rs.resume(); });
+    rs.on("close", function () { chan["[[FsReaderChannel:error]]"] = chan["[[FsReaderChannel:error]]"] || FsReaderChannel.CLOSED_ERROR; rs.resume(); });
     rs.on("end", function () { chan["[[FsReaderChannel:ended]]"] = true; });
   }
-  FsReaderChannel.CLOSED_ERROR = FsReaderChannel.prototype.CLOSED_ERROR = CLOSED_ERROR;
+  FsReaderChannel.CLOSED_ERROR = FsReaderChannel.prototype.CLOSED_ERROR = new Error("channel error");
   FsReaderChannel.prototype.close = function () {
     var err = this["[[FsReaderChannel:error]]"]
     if (err) {
-      //if (err === CLOSED_ERROR) return env.Promise.resolve();
+      //if (err === FsReaderChannel.CLOSED_ERROR) return env.Promise.resolve();
       //return env.Promise.reject(err);
-      if (err === CLOSED_ERROR) return;
+      if (err === FsReaderChannel.CLOSED_ERROR) return;
       throw err;
     }
-    this["[[FsReaderChannel:error]]"] = CLOSED_ERROR;
+    this["[[FsReaderChannel:error]]"] = FsReaderChannel.CLOSED_ERROR;
     this["[[FsReaderChannel:readStream]]"].close();
     //return env.Promise.resolve();
   };
   FsReaderChannel.prototype.next = function () {
     var err = this["[[FsReaderChannel:error]]"], rs, d;
     if (err) {
-      //if (err === CLOSED_ERROR) return env.Promise.resolve({done: true});
+      //if (err === FsReaderChannel.CLOSED_ERROR) return env.Promise.resolve({done: true});
       //return env.Promise.reject(err);
-      if (err === CLOSED_ERROR) return {done: true};
+      if (err === FsReaderChannel.CLOSED_ERROR) return {done: true};
       throw err;
     }
     //if (this["[[FsReaderChannel:ended]]"]) return env.Promise.resolve({done: true});
@@ -226,19 +223,19 @@
     if (pipes) pipes.forEach(function (pipe) { rs = rs.pipe(pipe); });
     this["[[FileReader:readStream]]"] = rs;
     rs.on("error", function (err) { chan["[[FileReader:error]]"] = err; rs.close(); });
-    rs.on("close", function () { chan["[[FileReader:error]]"] = chan["[[FileReader:error]]"] || CLOSED_ERROR; rs.resume(); });
+    rs.on("close", function () { chan["[[FileReader:error]]"] = chan["[[FileReader:error]]"] || FileReader.CLOSED_ERROR; rs.resume(); });
     rs.on("end", function () { chan["[[FileReader:ended]]"] = true; });
   }
-  FileReader.CLOSED_ERROR = FileReader.prototype.CLOSED_ERROR = CLOSED_ERROR;
+  FileReader.CLOSED_ERROR = FileReader.prototype.CLOSED_ERROR = new Error("channel error");
   FileReader.prototype.close = function () {
     var err = this["[[FileReader:error]]"]
     if (err) {
-      //if (err === CLOSED_ERROR) return env.Promise.resolve();
+      //if (err === FileReader.CLOSED_ERROR) return env.Promise.resolve();
       //return env.Promise.reject(err);
-      if (err === CLOSED_ERROR) return;
+      if (err === FileReader.CLOSED_ERROR) return;
       throw err;
     }
-    this["[[FileReader:error]]"] = CLOSED_ERROR;
+    this["[[FileReader:error]]"] = FileReader.CLOSED_ERROR;
     this["[[FileReader:readStream]]"].close();
     //return env.Promise.resolve();
   };
@@ -260,9 +257,9 @@
     }
     var err = this["[[FileReader:error]]"], rs, d;
     if (err) {
-      //if (err === CLOSED_ERROR) return env.Promise.resolve(new Buffer(0));
+      //if (err === FileReader.CLOSED_ERROR) return env.Promise.resolve(new Buffer(0));
       //return env.Promise.reject(err);
-      if (err === CLOSED_ERROR) return new Buffer(0);
+      if (err === FileReader.CLOSED_ERROR) return new Buffer(0);
       throw err;
     }
     //if (this["[[FileReader:ended]]"]) return env.Promise.resolve(new Buffer(0));

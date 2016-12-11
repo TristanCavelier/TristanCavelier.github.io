@@ -11,20 +11,19 @@
 
   if (env.registerLib) env.registerLib(envStreamChannels);
 
-  var CLOSED_ERROR = env.Channel.CLOSED_ERROR;
   function ReadableStreamChannel(rs) {
     var chan = this;
     this["[[ReadableStreamChannel:readStream]]"] = rs;
     rs.on("error", function (err) { chan["[[ReadableStreamChannel:error]]"] = err; });
-    rs.on("close", function () { chan["[[ReadableStreamChannel:error]]"] = chan["[[ReadableStreamChannel:error]]"] || CLOSED_ERROR; rs.resume(); });
+    rs.on("close", function () { chan["[[ReadableStreamChannel:error]]"] = chan["[[ReadableStreamChannel:error]]"] || ReadableStreamChannel.CLOSED_ERROR; rs.resume(); });
     rs.on("end", function () { chan["[[ReadableStreamChannel:ended]]"] = true; });
   }
-  ReadableStreamChannel.CLOSED_ERROR = ReadableStreamChannel.prototype.CLOSED_ERROR = CLOSED_ERROR;
+  ReadableStreamChannel.CLOSED_ERROR = ReadableStreamChannel.prototype.CLOSED_ERROR = new Error("channel closed");
   ReadableStreamChannel.prototype.getLength = function () { return NaN; };
   ReadableStreamChannel.prototype.next = function () {
     var err = this["[[ReadableStreamChannel:error]]"], rs, d;
     if (err) {
-      if (err === CLOSED_ERROR) return {value: undefined, done: true};
+      if (err === ReadableStreamChannel.CLOSED_ERROR) return {value: undefined, done: true};
       throw err;
     }
     if (this["[[ReadableStreamChannel:ended]]"]) return {value: undefined, done: true};

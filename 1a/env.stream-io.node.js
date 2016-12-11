@@ -14,7 +14,6 @@
   // dependencies:
   //   env.newDeferred (async)
   //   env.QuickTask.exec (tasks)
-  //   env.Channel.CLOSED_ERROR (channels)
 
   if (env.registerLib) env.registerLib(envStreamIo);
 
@@ -25,15 +24,14 @@
           return f;
         };
 
-  var CLOSED_ERROR = env.Channel.CLOSED_ERROR;
   function ReadableStreamReader(rs) {
     var chan = this;
     this["[[ReadableStreamReader:readStream]]"] = rs;
     rs.on("error", function (err) { chan["[[ReadableStreamReader:error]]"] = err; });
-    rs.on("close", function () { chan["[[ReadableStreamReader:error]]"] = chan["[[ReadableStreamReader:error]]"] || CLOSED_ERROR; rs.resume(); });
+    rs.on("close", function () { chan["[[ReadableStreamReader:error]]"] = chan["[[ReadableStreamReader:error]]"] || ReadableStreamReader.CLOSED_ERROR; rs.resume(); });
     rs.on("end", function () { chan["[[ReadableStreamReader:ended]]"] = true; });
   }
-  ReadableStreamReader.CLOSED_ERROR = ReadableStreamReader.prototype.CLOSED_ERROR = CLOSED_ERROR;
+  ReadableStreamReader.CLOSED_ERROR = ReadableStreamReader.prototype.CLOSED_ERROR = new Error("channel closed");
   ReadableStreamReader.prototype.read = taskify(function* (count) {
     //     read([count int]) array
     // `count === undefined` means "size of internal buffer"
@@ -52,7 +50,7 @@
     }
     var err = this["[[ReadableStreamReader:error]]"], rs, d;
     if (err) {
-      if (err === CLOSED_ERROR) return [];
+      if (err === ReadableStreamReader.CLOSED_ERROR) return [];
       throw err;
     }
     if (this["[[ReadableStreamReader:ended]]"]) return [];
