@@ -34,7 +34,16 @@
 
   if (env.registerLib) env.registerLib(envTasks);
 
+  function inherit(sup, base) {
+    var descriptor = Object.getOwnPropertyDescriptor(base.prototype, "constructor");
+    descriptor.value = base;
+    base.prototype = Object.create(sup.prototype);
+    Object.defineProperty(base.prototype, "constructor", descriptor);
+    return base;
+  }
+
   function Task(generatorFunction) {
+    // API stability level: 1 - Experimental
     var resolve, reject, g, ths = this;
     function magicDeferred() {
       var res, promise = env.newPromise(function (r) { res = r; });
@@ -94,6 +103,7 @@
   env.Task = Task;
 
   function TaskAll(iterable) {
+    // API stability level: 1 - Experimental
     var ths = this;
     this["[[TaskPromise]]"] = env.newPromise(function (resolve, reject) {
       var i = 0, l = iterable.length, a = ths["[[TaskArray]]"] = new Array(l), count = l, p;
@@ -126,6 +136,7 @@
   Task.all = function (iterable) { return new env.TaskAll(iterable); };
 
   function TaskRace(iterable) {
+    // API stability level: 1 - Experimental
     var ths = this;
     this["[[TaskPromise]]"] = env.newPromise(function (resolve, reject) {
       var i = 0, l = iterable.length, a = ths["[[TaskArray]]"] = new Array(l), p;
@@ -182,7 +193,7 @@
     previous = it["[[TaskPending]]"] = previous && typeof previous.then === "function" ? previous : env.Promise.resolve(previous);  // or env.Promise.resolve()??? make a TaskThen test
     it["[[TaskPromise]]"] = previous.then(typeof onDone === "function" ? rec.bind(it, onDone) : onDone, typeof onFail === "function" ? rec.bind(it, onFail) : onFail);
   }
-  TaskThen.prototype = Object.create(Task.prototype);
+  inherit(Task, TaskThen);
 
   Task.sequence = function (sequence) {  // BBB
     // API stability level: 1 - Experimental
@@ -205,6 +216,7 @@
   env.newTaskThen = function () { var c = env.TaskThen, o = Object.create(c.prototype); c.apply(o, arguments); return o; };
 
   function QuickTask(generatorFunction) {
+    // API stability level: 1 - Experimental
     var _resolve, _reject, g, ths = this;
     function magicDeferred() {
       var res, promise = env.newPromise(function (r) { res = r; });
@@ -284,9 +296,9 @@
     return this;
   };
   QuickTask.exec = function (generatorFunction) {
-    // task = gf => QuickTask.exec(gf);
-
     // API stability level: 1 - Experimental
+
+    // task = gf => QuickTask.exec(gf);
     var qt = new QuickTask(generatorFunction);
     if (qt.resolved) return qt.value;
     if (qt.rejected) throw qt.value;
