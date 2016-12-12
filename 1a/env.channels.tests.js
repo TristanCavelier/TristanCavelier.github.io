@@ -108,11 +108,71 @@
     res.push(chan.isClosed());
     end();
   });
-  test("'channel.isClosed' true even if filled", 1000, [true], function (res, end) {
+  test("'channel.isClosed' true even if filled (len > 0)", 1000, [true], function (res, end) {
     var chan = env.newChannel(1);
     chan.send();
     chan.close();
     res.push(chan.isClosed());
+    end();
+  });
+  test("'channel.isEmpty' (!channel.isFilled)", 1000, [true, true, true, false], function (res, end) {
+    var chan;
+    res.push(env.newChannel().isEmpty());
+    res.push(env.newChannel(1).isEmpty());
+    chan = env.newChannel();
+    chan.send();
+    res.push(chan.isEmpty());
+    chan = env.newChannel(1);
+    chan.send();
+    res.push(chan.isEmpty());
+    end();
+  });
+  test("'channel.isFree' (!channel.isFull)", 1000, [false, true, false, false], function (res, end) {
+    var chan;
+    res.push(env.newChannel().isFree());
+    res.push(env.newChannel(1).isFree());
+    chan = env.newChannel();
+    chan.send();
+    res.push(chan.isFree());
+    chan = env.newChannel(1);
+    chan.send();
+    res.push(chan.isFree());
+    end();
+  });
+  test("'channel.isFilled' (!channel.isEmpty)", 1000, [false, false, false, true], function (res, end) {
+    var chan;
+    res.push(env.newChannel().isFilled());
+    res.push(env.newChannel(1).isFilled());
+    chan = env.newChannel();
+    chan.send();
+    res.push(chan.isFilled());
+    chan = env.newChannel(1);
+    chan.send();
+    res.push(chan.isFilled());
+    end();
+  });
+  test("'channel.isFull' (!channel.isFree)", 1000, [true, false, true, true], function (res, end) {
+    var chan;
+    res.push(env.newChannel().isFull());
+    res.push(env.newChannel(1).isFull());
+    chan = env.newChannel();
+    chan.send();
+    res.push(chan.isFull());
+    chan = env.newChannel(1);
+    chan.send();
+    res.push(chan.isFull());
+    end();
+  });
+  test("'channel.isReadable'", 1000, [false, false, true, true], function (res, end) {
+    var chan;
+    res.push(env.newChannel().isReadable());
+    res.push(env.newChannel(1).isReadable());
+    chan = env.newChannel();
+    chan.send();
+    res.push(chan.isReadable());
+    chan = env.newChannel(1);
+    chan.send();
+    res.push(chan.isReadable());
     end();
   });
   test("'channel.close' twice is ok", 1000, [], function (res, end) {
@@ -170,7 +230,7 @@
       res.push("next");
     });
   });
-  test("'channel.send' fulfilled directly if capacity > 0", 1000, ["start", "send", "next"], function (res, end) {
+  test("'channel.send' fulfilled directly if free (cap > 0)", 1000, ["start", "send", "next"], function (res, end) {
     var chan = env.newChannel(1);
     then(function () {
       res.push("start");
@@ -239,35 +299,17 @@
       s.cancel();
     });
   });
-  test("'channel.send iffree' returns synchronously false if not waiting for next", 1000, [false], function (res, end) {
-    var chan = env.newChannel();
-    res.push(chan.send(undefined, true));
-    end();
-  });
-  test("'channel.send iffree' returns synchronously true if waiting for next", 1000, [true], function (res, end) {
+  test("'channel.send' returns synchronously if waiting for next (experimental)", 1000, [false], function (res, end) {
     var chan = env.newChannel();
     chan.next();
-    res.push(chan.send(undefined, true));
+    res.push(!!chan.send());
     end();
   });
-  test("'channel.send iffree' returns synchronously true if capacity > 0", 1000, [true, false], function (res, end) {
+  test("'channel.send' returns synchronously if free (cap > 0) (experimental)", 1000, [false, true], function (res, end) {
     var chan = env.newChannel(1);
-    res.push(chan.send(undefined, true));
-    res.push(chan.send(undefined, true));
+    res.push(!!chan.send());
+    res.push(!!chan.send());
     end();
-  });
-  test("'channel.send iffree' fulfills on going 'next'", 1000, ["send", 2, false], function (res, end) {
-    var chan = env.newChannel();
-    then(function () {
-      return chan.next();
-    }).then(function (v) {
-      res.push(v.value, v.done);
-      end();
-    });
-    sleep(4).then(function () {
-      chan.send(2, true);
-      res.push("send");
-    });
   });
   test("'channel.next' fulfilled on 'send' with sent value", 1000, ["start", "send", 2, false], function (res, end) {
     var chan = env.newChannel();
@@ -341,37 +383,19 @@
       });
     });
   });
-  test("'channel.next iffilled' returns synchronously null if not sending", 1000, [null], function (res, end) {
-    var chan = env.newChannel();
-    res.push(chan.next(true));
-    end();
-  });
-  test("'channel.next iffilled' returns synchronously object value if sending", 1000, [2, false], function (res, end) {
+  test("'channel.next' returns synchronously object value if sending (experimental)", 1000, [2, false], function (res, end) {
     var chan = env.newChannel(), v;
     chan.send(2);
-    v = chan.next(true);
+    v = chan.next();
     res.push(v.value, v.done);
     end();
   });
-  test("'channel.next iffilled' returns synchronously object value if length > 0", 1000, [2, false], function (res, end) {
+  test("'channel.next' returns synchronously object value if filled (experimental)", 1000, [2, false], function (res, end) {
     var chan = env.newChannel(1), v;
-    chan.send(2, true);
-    v = chan.next(true);
+    chan.send(2);
+    v = chan.next();
     res.push(v.value, v.done);
     end();
-  });
-  test("'channel.next iffilled' fulfills on going 'send'", 1000, [2, false, "send"], function (res, end) {
-    var chan = env.newChannel();
-    then(function () {
-      return chan.send(2);
-    }).then(function() {
-      res.push("send");
-      end();
-    });
-    sleep(4).then(function () {
-      var v = chan.next(true);
-      res.push(v.value, v.done);
-    });
   });
   test("'Channel.select' gets first responding next without consuming other next", 1000, [true, 2, 33, false, 22, false], function (res, end) {
     var chan1 = env.newChannel(),
@@ -381,7 +405,8 @@
       return env.Channel.select([chan1, chan2, chan3]);
     }).then(function (v) {
       res.push(v.channel === chan3, v.index, v.value, v.done);
-      v = chan2.next(true);
+      return chan2.next();
+    }).then(function (v) {
       res.push(v.value, v.done);
       end();
     });
@@ -398,12 +423,13 @@
       return env.Channel.select([chan1, chan2, chan3]);
     }).then(function (v) {
       res.push(v.channel === chan2, v.index, v.value, v.done);
-      v = chan3.next(true);
+      return chan3.next();
+    }).then(function (v) {
       res.push(v.value, v.done);
       end();
     });
   });
-  test("'Channel.select cancel' cancels without consuming other next", 1000, ["cancelled"], function (res, end) {
+  test("'Channel.select cancel' cancels without consuming other next", 1000, ["cancelled", 33, false, 22, false], function (res, end) {
     var chan1 = env.newChannel(),
         chan2 = env.newChannel(),
         chan3 = env.newChannel(), s;
@@ -411,20 +437,26 @@
       return s = env.Channel.select([chan1, chan2, chan3]);
     }).then(null, function (e) {
       res.push("cancelled");
+      return chan3.next();
+    }).then(function (v) {
+      res.push(v.value, v.done);
+      return chan2.next();
+    }).then(function (v) {
+      res.push(v.value, v.done);
       end();
     });
-    s.cancel();
     chan3.send(33);
     chan2.send(22);
+    s.cancel();
   });
-  test("'Channel.select iffilled' return synchronously null if no channel are filled", 1000, [null], function (res, end) {
+  test("'Channel.select ifreadable' return synchronously null if no channel are filled", 1000, [null], function (res, end) {
     var chan1 = env.newChannel(),
         chan2 = env.newChannel(),
         chan3 = env.newChannel();
     res.push(env.Channel.select([chan1, chan2, chan3], true));
     end();
   });
-  test("'Channel.select iffilled' return synchronously first filled channel value", 1000, [true, 1, 22, false], function (res, end) {
+  test("'Channel.select ifreadable' return synchronously first filled channel value", 1000, [true, 1, 22, false], function (res, end) {
     var chan1 = env.newChannel(),
         chan2 = env.newChannel(),
         chan3 = env.newChannel(), v;
