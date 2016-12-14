@@ -163,8 +163,8 @@
     res.push(chan.isFull());
     end();
   });
-  test("'channel.isReadable'", 1000, [false, false, true, true], function (res, end) {
-    var chan;
+  test("'channel.isReadable'", 1000, [false, false, true, true, false], function (res, end) {
+    var chan, sending;
     res.push(env.newChannel().isReadable());
     res.push(env.newChannel(1).isReadable());
     chan = env.newChannel();
@@ -172,6 +172,10 @@
     res.push(chan.isReadable());
     chan = env.newChannel(1);
     chan.send();
+    res.push(chan.isReadable());
+    chan = env.newChannel();
+    sending = chan.send();
+    sending.cancel();
     res.push(chan.isReadable());
     end();
   });
