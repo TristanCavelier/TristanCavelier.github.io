@@ -21,11 +21,6 @@
 
   function Channel(capacity) {
     // tips:
-    //   Use as synchronous channel send and next
-    //     chan = new Channel(Infinity)
-    //     chan.send(1);  // adds 1 to the channel
-    //     chan.next(true);  // returns {value: 1}
-    //     chan.next(true);  // returns null
     //   Use as semaphore of length 2
     //     sem = new Channel(2);
     //     await sem.send(1);  // acquire
