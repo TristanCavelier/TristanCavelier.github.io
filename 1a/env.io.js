@@ -34,7 +34,7 @@
     this.ios = ios;
     if (!ios.length) throw new Error("`ios` should not be empty");
   }
-  IoChain.prototype.filled = undefined;
+  //IoChain.prototype.filled = undefined;
   IoChain.prototype.closed = undefined;
   IoChain.prototype.tic = function (forceClose) {
     var ios = this.ios, l = ios.length - 1, i = l, chunk;
@@ -59,7 +59,7 @@
   };
   IoChain.prototype.read = function (count) {
     var io = this.ios[this.ios.length - 1], chunk = io.read(count);
-    this.filled = io.filled;
+    //this.filled = io.filled;
     return chunk;
   };
   env.IoChain = IoChain;
