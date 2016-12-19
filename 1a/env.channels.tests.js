@@ -176,6 +176,7 @@
     chan = env.newChannel();
     sending = chan.send();
     sending.cancel();
+    sending.then(null, function () {});  // catch error
     res.push(chan.isReadable());
     end();
   });
