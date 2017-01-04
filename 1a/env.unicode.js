@@ -252,6 +252,20 @@
     }
     return codePoints;
   };
+  env.decodeUtf8LikeChromeOs = function (bytes) {
+    var cont = true, ret = [], ee = [], e, cache = [], i = 0, ei = 0;
+    while (cont) {
+      cont = false;
+      env.decodeUtf8ChunkAlgorithm(bytes, i, bytes.length, ret, false, ee, cache, true);
+      if ((e = ee[ei++]) !== undefined) {
+        ret.push(0xFFFD);
+        cache.splice(0);
+        i = e.index - e.length + 2;
+        cont = i < bytes.length;
+      }
+    }
+    return ret;
+  };
   env.decodeUtf8LikeChrome = function (bytes) {
     var cont = true, ret = [], ee = [], e, cache = [], i = 0, ei = 0;
     while (cont) {
@@ -346,7 +360,7 @@
     }
     return ret;
   };
-  env.decodeUtf8 = env.decodeUtf8LikeChrome;
+  env.decodeUtf8 = env.decodeUtf8LikeChromeOs;
   env.decodeUtf8ToString = function (bytes) {
     return env.encodeCodePointToString.apply(env, env.decodeUtf8(bytes));
   };
