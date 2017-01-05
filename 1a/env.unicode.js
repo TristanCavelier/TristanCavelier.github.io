@@ -25,6 +25,7 @@
   //   env.encodeStringToUtf8
   //
   //   env.decodeUtf8ChunkAlgorithm
+  //   env.decodeUtf8LikeChromeOs
   //   env.decodeUtf8LikeChrome
   //   env.decodeUtf8LikeFirefox
   //   env.decodeUtf8
