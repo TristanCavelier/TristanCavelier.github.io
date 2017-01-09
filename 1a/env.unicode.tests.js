@@ -78,10 +78,20 @@
     return codes;
   }
 
+  var decodeUtf8 = null;
+  nativeSoftDecodeUtf8BytesToText([0xE8, 0x99, 0x02, 0xE8,0x99], function (err, text) {
+    if (err) return console.error(err);
+    if (text === "\uFFFD\x02\uFFFD") return decodeUtf8 = env.decodeUtf8LikeFirefox;
+    if (text === "\uFFFD\x02\uFFFD\uFFFD") return decodeUtf8 = env.decodeUtf8LikeChrome;
+    if (text === "\uFFFD\uFFFD\x02\uFFFD\uFFFD") return decodeUtf8 = env.decodeUtf8LikeChromeOs;
+    console.error(new Error("No match!"));
+    return decodeUtf8 = env.decodeUtf8;
+  });
+
   function testSoftDecodeUtf8BytesToString(bytes) {
     nativeSoftDecodeUtf8BytesToText(bytes, function (err, text) {
       test("unicode " + bytesToJs(bytes), 300, textToCodePoints(text), function (res, end) {
-        res.push.apply(res, env.decodeUtf8(bytes));
+        res.push.apply(res, decodeUtf8(bytes));
         end();
       });
     });
