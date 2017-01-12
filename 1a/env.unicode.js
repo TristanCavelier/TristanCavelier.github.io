@@ -13,6 +13,7 @@
 
   // provides:
   //   env.encodeCodePointToString
+  //   env.encodeCodePointsToString
   //
   //   env.encodeCodePointsToUtf16ChunkAlgorithm
   //   env.encodeCodePointsToUtf16
@@ -55,6 +56,22 @@
       } else throw new Error("Invalid code point " + code);
     }
     return String.fromCharCode.apply(String, codes);
+  };
+
+  env.encodeCodePointsToString = function (codePoints) {
+    // quicker than using `String.fromCodePoint.apply(String, codePoints)`
+    //   (and 32766 was the amount limit of argument for a function call).
+    var i = 0, l = codePoints.length, code, s = "";
+    for (; i < l; i += 1) {
+      code = codePoints[i];
+      //if (0xD800 <= code && code <= 0xDFFF) s += String.fromCharCode(0xFFFD); else
+      if (code <= 0xFFFF) s += String.fromCharCode(code);
+      else if (code <= 0x10FFFF) {  // surrogate pair
+        code -= 0x10000;
+        s += String.fromCharCode(0xD800 + ((code >>> 10) & 0x3FF), 0xDC00 + (code & 0x3FF));
+      } else throw new Error("Invalid code point " + code);
+    }
+    return s;
   };
 
   env.encodeCodePointsToUtf16ChunkAlgorithm = function (codePoints, utf16Codes, o) {
@@ -363,7 +380,7 @@
   };
   env.decodeUtf8 = env.decodeUtf8LikeChromeOs;
   env.decodeUtf8ToString = function (bytes) {
-    return env.encodeCodePointToString.apply(env, env.decodeUtf8(bytes));
+    return env.encodeCodePointsToString(env.decodeUtf8(bytes));
   };
 
   // function viewCodePointToUtf8(code) {
