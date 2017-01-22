@@ -225,31 +225,31 @@
       code = utf8Codes[i];
       switch (cache[0]) {
         case 2:
-          if ((0xC0 & code) !== 0x80) { events.push({type: "error", message: "invalid continuation byte", errno: 2, length: 2, index: i, requiredUtf8CodeAmount: 2, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]}); return codePoints; }
+          if ((0xC0 & code) !== 0x80) { events.push({type: "error", message: "invalid continuation byte", errno: 2, length: 2, index: i, requiredUtf8CodeAmount: 2, requiredUtf8CodeIndex: 1}); return codePoints; }
           else { codePoints.push(((cache[1] << 6) | (code & 0x3F)) & 0x7FF); cache[0] = 0; } break;
         case 3:
-          if ((0xC0 & code) !== 0x80) { events.push({type: "error", message: "invalid continuation byte", errno: 2, length: 2, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]}); return codePoints; }
-          else if ((c = cache[1]) === 0xE0 && code <= 0x9F && !allowOverlongEncoding) { events.push({type: "error", message: "overlong encoding", errno: 3, length: 2, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]}); return codePoints; }
+          if ((0xC0 & code) !== 0x80) { events.push({type: "error", message: "invalid continuation byte", errno: 2, length: 2, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 1}); return codePoints; }
+          else if ((c = cache[1]) === 0xE0 && code <= 0x9F && !allowOverlongEncoding) { events.push({type: "error", message: "overlong encoding", errno: 3, length: 2, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 1}); return codePoints; }
           else { cache[3] = code; cache[1] = (c << 6) | (code & 0x3F); cache[0] = 31; } break;
         case 31:
-          if ((0xC0 & code) !== 0x80) { events.push({type: "error", message: "invalid continuation byte", errno: 2, length: 3, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3], code]}); return codePoints; }
-          else if (0xD800 <= (c = ((cache[1] << 6) | (code & 0x3F)) & 0xFFFF) && c <= 0xDFFF) { events.push({type: "error", message: "reserved code point", errno: 4, length: 3, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3], code]}); return codePoints; }
+          if ((0xC0 & code) !== 0x80) { events.push({type: "error", message: "invalid continuation byte", errno: 2, length: 3, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 2}); return codePoints; }
+          else if (0xD800 <= (c = ((cache[1] << 6) | (code & 0x3F)) & 0xFFFF) && c <= 0xDFFF) { events.push({type: "error", message: "reserved code point", errno: 4, length: 3, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 2}); return codePoints; }
           else { codePoints.push(c); cache[0] = 0; } break;
         case 4:
-          if ((0xC0 & code) !== 0x80) { events.push({type: "error", message: "invalid continuation byte", errno: 2, length: 2, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]}); return codePoints; }
-          else if ((c = cache[1]) === 0xF0 && code <= 0x8F && !allowOverlongEncoding) { events.push({type: "error", message: "overlong encoding", errno: 3, length: 2, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2], code]}); return codePoints; }
+          if ((0xC0 & code) !== 0x80) { events.push({type: "error", message: "invalid continuation byte", errno: 2, length: 2, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 1}); return codePoints; }
+          else if ((c = cache[1]) === 0xF0 && code <= 0x8F && !allowOverlongEncoding) { events.push({type: "error", message: "overlong encoding", errno: 3, length: 2, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 1}); return codePoints; }
           else { cache[3] = code; cache[1] = (c << 6) | (code & 0x3F); cache[0] = 41; } break;
         case 41:
-          if ((0xC0 & code) !== 0x80) { events.push({type: "error", message: "invalid continuation byte", errno: 2, length: 3, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3], code]}); return codePoints; }
+          if ((0xC0 & code) !== 0x80) { events.push({type: "error", message: "invalid continuation byte", errno: 2, length: 3, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 2}); return codePoints; }
           else { cache[4] = code; cache[1] = (cache[1] << 6) | (code & 0x3F); cache[0] = 42; } break;
         case 42:
-          if ((0xC0 & code) !== 0x80) { events.push({type: "error", message: "invalid continuation byte", errno: 2, length: 4, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 3, lastUtf8Codes: [cache[2], cache[3], cache[4], code]}); return codePoints; }
-          else if ((c = ((cache[1] << 6) | (code & 0x3F)) & 0x1FFFFF) > 0x10FFFF) { events.push({type: "error", message: "invalid code point", errno: 5, length: 4, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 3, lastUtf8Codes: [cache[2], cache[3], cache[4], code]}); return codePoints; }
+          if ((0xC0 & code) !== 0x80) { events.push({type: "error", message: "invalid continuation byte", errno: 2, length: 4, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 3}); return codePoints; }
+          else if ((c = ((cache[1] << 6) | (code & 0x3F)) & 0x1FFFFF) > 0x10FFFF) { events.push({type: "error", message: "invalid code point", errno: 5, length: 4, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 3}); return codePoints; }
           else { codePoints.push(c); cache[0] = 0; } break;
         default:
           if (code <= 0x7F) codePoints.push(code);
           else if ((0xE0 & code) === 0xC0) {
-            if (code < 0xC2 && !allowOverlongEncoding) { events.push({type: "error", message: "overlong encoding", errno: 3, length: 1, index: i, requiredUtf8CodeAmount: 2, requiredUtf8CodeIndex: 0, lastUtf8Codes: [code]}); return codePoints; }
+            if (code < 0xC2 && !allowOverlongEncoding) { events.push({type: "error", message: "overlong encoding", errno: 3, length: 1, index: i, requiredUtf8CodeAmount: 2, requiredUtf8CodeIndex: 0}); return codePoints; }
             else { cache[2] = cache[1] = code; cache[0] = 2; }
           } else if ((0xF0 & code) === 0xE0) { cache[2] = cache[1] = code; cache[0] = 3; }
           else if ((0xF8 & code) === 0xF0) {
@@ -260,12 +260,12 @@
     }
     if (close) {
       switch (cache[0]) {
-        case 2:  events.push({type: "error", message: "unexpected end of data", errno: 6, length: 2, index: i, requiredUtf8CodeAmount: 2, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2]]}); break;
-        case 3:  events.push({type: "error", message: "unexpected end of data", errno: 6, length: 2, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2]]}); break;
-        case 31: events.push({type: "error", message: "unexpected end of data", errno: 6, length: 3, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3]]}); break;
-        case 4:  events.push({type: "error", message: "unexpected end of data", errno: 6, length: 2, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 1, lastUtf8Codes: [cache[2]]}); break;
-        case 41: events.push({type: "error", message: "unexpected end of data", errno: 6, length: 3, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 2, lastUtf8Codes: [cache[2], cache[3]]}); break;
-        case 42: events.push({type: "error", message: "unexpected end of data", errno: 6, length: 4, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 3, lastUtf8Codes: [cache[2], cache[3], cache[4]]}); break;
+        case 2:  events.push({type: "error", message: "unexpected end of data", errno: 6, length: 2, index: i, requiredUtf8CodeAmount: 2, requiredUtf8CodeIndex: 1}); break;
+        case 3:  events.push({type: "error", message: "unexpected end of data", errno: 6, length: 2, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 1}); break;
+        case 31: events.push({type: "error", message: "unexpected end of data", errno: 6, length: 3, index: i, requiredUtf8CodeAmount: 3, requiredUtf8CodeIndex: 2}); break;
+        case 4:  events.push({type: "error", message: "unexpected end of data", errno: 6, length: 2, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 1}); break;
+        case 41: events.push({type: "error", message: "unexpected end of data", errno: 6, length: 3, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 2}); break;
+        case 42: events.push({type: "error", message: "unexpected end of data", errno: 6, length: 4, index: i, requiredUtf8CodeAmount: 4, requiredUtf8CodeIndex: 3}); break;
       }
     }
     return codePoints;
