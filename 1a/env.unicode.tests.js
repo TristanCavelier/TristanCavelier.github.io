@@ -2,7 +2,7 @@
 (function (env) {
   "use strict";
 
-  /*! Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
+  /*! Copyright (c) 2015-2017 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
       the extent permitted by applicable law. You can redistribute it
       and/or modify it under the terms of the Do What The Fuck You Want
@@ -79,7 +79,7 @@
   }
 
   var decodeUtf8 = null;
-  nativeSoftDecodeUtf8BytesToText([0xE8, 0x99, 0x02, 0xE8,0x99], function (err, text) {
+  nativeSoftDecodeUtf8BytesToText([0xE8, 0x99, 0x02, 0xE8, 0x99], function (err, text) {
     if (err) return console.error(err);
     if (text === "\uFFFD\x02\uFFFD") return decodeUtf8 = env.decodeUtf8LikeFirefox;
     if (text === "\uFFFD\x02\uFFFD\uFFFD") return decodeUtf8 = env.decodeUtf8LikeChrome;
@@ -190,13 +190,23 @@
   testSoftDecodeUtf8BytesToString([0xf4,0x7F,0x00,0x32]);
   testSoftDecodeUtf8BytesToString([0xf4,0x80,0x00,0x32]);
   testSoftDecodeUtf8BytesToString([0xf4,0x90,0x00,0x32]);
-  testSoftDecodeUtf8BytesToString([0xf4,0xa8,0xe4,0x32]);
+  testSoftDecodeUtf8BytesToString([0xf4,0x90,0x80,0x32]);
+  testSoftDecodeUtf8BytesToString([0xf4,0x90,0xbf,0x32]);
+  testSoftDecodeUtf8BytesToString([0xf4,0x90,0xc0,0x32]);
   testSoftDecodeUtf8BytesToString([0xf4,0xbf,0x00,0x32]);
+  testSoftDecodeUtf8BytesToString([0xf4,0xbf,0x80,0x32]);
+  testSoftDecodeUtf8BytesToString([0xf4,0xbf,0xbf,0x32]);
+  testSoftDecodeUtf8BytesToString([0xf4,0xbf,0xc0,0x32]);
   testSoftDecodeUtf8BytesToString([0xf4,0xbf,0xff,0x32]);
   testSoftDecodeUtf8BytesToString([0xf4,0xbf,0x00]);
+  testSoftDecodeUtf8BytesToString([0xf4,0xbf,0x7f]);
+  testSoftDecodeUtf8BytesToString([0xf4,0xbf,0x80]);
+  testSoftDecodeUtf8BytesToString([0xf4,0xbf,0xbf]);
+  testSoftDecodeUtf8BytesToString([0xf4,0xbf,0xc0]);
   testSoftDecodeUtf8BytesToString([0xf4,0xbf,0xff]);
 
   testSoftDecodeUtf8BytesToString([0xf4,0x94,0xab,0x96]);
+  testSoftDecodeUtf8BytesToString([0xf4,0xa9,0x80,0x18]);
 
   testSoftDecodeUtf8BytesToString(randBytes(1));
   testSoftDecodeUtf8BytesToString(randBytes(2));
