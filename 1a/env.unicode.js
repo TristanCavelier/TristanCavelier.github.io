@@ -4,7 +4,7 @@
 
   /*! env.unicode.js Version 1.0.0
 
-      Copyright (c) 2015-2016 Tristan Cavelier <t.cavelier@free.fr>
+      Copyright (c) 2015-2017 Tristan Cavelier <t.cavelier@free.fr>
       This program is free software. It comes without any warranty, to
       the extent permitted by applicable law. You can redistribute it
       and/or modify it under the terms of the Do What The Fuck You Want
@@ -317,11 +317,14 @@
             ++i;
           } else if (e.requiredUtf8CodeAmount === 4) {
             if (e.length === 3) {
+              // here bytes[i] is already between 0x80 and 0xBF
               if (i + 2 < bytes.length &&  // have 4 bytes in a row
-                  // specific case for 0xf4
-                  (bytes[i - 1] !== 0xF4 || 0x80 <= bytes[i] && bytes[i] <= 0x8F))
+                  (bytes[i - 1] !== 0xF4 || bytes[i] <= 0x8F))
                 ++i;
-            } else if (e.length === 4) i += 2;
+            } else if (e.length === 4) {
+              // here bytes[i] and [i + 1] is already between 0x80 and 0xBF
+              if (bytes[i - 1] !== 0xF4 || bytes[i] < 0x90) i += 2;
+            }
           }
         }
 
@@ -363,8 +366,8 @@
             ++i;
           } else if (e.requiredUtf8CodeAmount === 4) {
             if (e.length === 3) {
-              if (// specific case for 0xf4
-                  (bytes[i - 1] !== 0xF4 || 0x80 <= bytes[i] && bytes[i] <= 0x8F))
+              // here bytes[i] is already between 0x80 and 0xBF
+              if (bytes[i - 1] !== 0xF4 || bytes[i] <= 0x8F)
                 ++i;
             } else if (e.length === 4) i += 2;
           }
