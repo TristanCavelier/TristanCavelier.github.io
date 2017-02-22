@@ -74,7 +74,9 @@
   }
   Blob.prototype.size = 0;
   Blob.prototype.type = "";
-  //Blob.prototype.slice = function ([start[, end[, contentType]]]) { XXX; };
+  Blob.prototype.slice = function (start, end, contentType) {
+    return new Blob([env._html5_weakmap.get(this).data.slice(start, end)], {type: contentType});
+  };
   env.Blob = Blob;
 
   function FileReader() { EventTarget.call(this); }
