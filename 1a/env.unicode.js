@@ -323,7 +323,7 @@
                 ++i;
             } else if (e.length === 4) {
               // here bytes[i] and [i + 1] is already between 0x80 and 0xBF
-              if (bytes[i - 1] !== 0xF4 || bytes[i] < 0x90) i += 2;
+              if (bytes[i - 1] !== 0xF4 || bytes[i] <= 0x8F) i += 2;
             }
           }
         }
