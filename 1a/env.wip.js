@@ -9,6 +9,70 @@
       To Public License, Version 2, as published by Sam Hocevar. See
       http://www.wtfpl.net/ for more details. */
 
+  function removeAccent(text) {
+    // /[äáâàãāăǎȧạ   å  ]/g, "a"
+    // /[        ḃḅ      ]/g, "b"
+    // /[  ĉ    čċ  ç    ]/g, "c"
+    // /[       ďḋḍ ḑ    ]/g, "d"
+    // /[ëéêèẽēĕěėẹ ȩę   ]/g, "e"
+    // /[        ḟ       ]/g, "f"
+    // /[ ǵĝ  ḡğǧġ  ģ    ]/g, "g"
+    // /[ḧ ĥ    ȟḣḥ ḩ    ]/g, "h"
+    // /[ïíîìĩīĭǐıị  į   ]/g, "i"
+    // /[  ĵ    ǰȷ       ]/g, "j"
+    // /[ ḱ     ǩ ḳ ķ    ]/g, "k"
+    // /[ ĺ     ľŀḷ ļ    ]/g, "l"
+    // /[ ḿ      ṁṃ      ]/g, "m"
+    // /[ ń ǹñ  ňṅṇ ņ    ]/g, "n"
+    // /[öóôòõōŏǒȯọő ǫ ø ]/g, "o"
+    // /[ ṕ      ṗ       ]/g, "p"
+    // /[                ]/g, "q"
+    // /[ ŕ     řṙṛ ŗ    ]/g, "r"
+    // /[ śŝ    šṡṣ ş    ]/g, "s"
+    // /[ẗ      ťṫṭ ţ    ]/g, "t"
+    // /[üúûùũūŭǔ ụű ųůǖǚ]/g, "u"
+    // /[    ṽ    ṿ      ]/g, "v"
+    // /[ẅẃŵẁ    ẇẉ   ẘ  ]/g, "w"
+    // /[ẍ       ẋ       ]/g, "x"
+    // /[ÿýŷỳỹȳ  ẏỵ   ẙ  ]/g, "y"
+    // /[ źẑ    žżẓ      ]/g, "z"
+
+    // /æ/g, "ae"
+    // /œ/g, "oe"
+    // /ß/g, "ss"
+
+    // ŧþðđŋħł ?
+    return text
+      .replace(/[äáâàãāăǎȧạå]/g, "a")
+      .replace(/[ḃḅ]/g, "b")
+      .replace(/[ĉčċç]/g, "c")
+      .replace(/[ďḋḍḑ]/g, "d")
+      .replace(/[ëéêèẽēĕěėẹȩę]/g, "e")
+      .replace(/[ḟ]/g, "f")
+      .replace(/[ǵĝḡğǧġģ]/g, "g")
+      .replace(/[ḧĥȟḣḥḩ]/g, "h")
+      .replace(/[ïíîìĩīĭǐıịį]/g, "i")
+      .replace(/[ĵǰȷ]/g, "j")
+      .replace(/[ḱǩḳķ]/g, "k")
+      .replace(/[ĺľŀḷļ]/g, "l")
+      .replace(/[ḿṁṃ]/g, "m")
+      .replace(/[ńǹñňṅṇņ]/g, "n")
+      .replace(/[öóôòõōŏǒȯọőǫø]/g, "o")
+      .replace(/[ṕṗ]/g, "p")
+      .replace(/[ŕřṙṛŗ]/g, "r")
+      .replace(/[śŝšṡṣş]/g, "s")
+      .replace(/[ẗťṫṭţ]/g, "t")
+      .replace(/[üúûùũūŭǔụűųůǖǚ]/g, "u")
+      .replace(/[ṽṿ]/g, "v")
+      .replace(/[ẅẃŵẁẇẉẘ]/g, "w")
+      .replace(/[ẍẋ]/g, "x")
+      .replace(/[ÿýŷỳỹȳẏỵẙ]/g, "y")
+      .replace(/[źẑžżẓ]/g, "z")
+      .replace(/æ/g, "ae")
+      .replace(/œ/g, "oe")
+      .replace(/ß/g, "ss");
+  }
+
   // https://en.wikipedia.org/wiki/List_of_XML_and_HTML_character_entity_references
   // https://golang.org/src/html/entity.go
   var entity_dict = {
