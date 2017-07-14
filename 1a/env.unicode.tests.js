@@ -79,11 +79,10 @@
   }
 
   var decodeUtf8 = null;
-  nativeSoftDecodeUtf8BytesToText([0xE8, 0x99, 0x02, 0xE8, 0x99], function (err, text) {
+  nativeSoftDecodeUtf8BytesToText([0xED, 0xB2, 0x02, 0xE8, 0x99, 0x02, 0xE8, 0x99], function (err, text) {
     if (err) return console.error(err);
-    if (text === "\uFFFD\x02\uFFFD") return decodeUtf8 = env.decodeUtf8LikeFirefox;
-    if (text === "\uFFFD\x02\uFFFD\uFFFD") return decodeUtf8 = env.decodeUtf8LikeChrome;
-    if (text === "\uFFFD\uFFFD\x02\uFFFD\uFFFD") return decodeUtf8 = env.decodeUtf8LikeChromeOs;
+    if (text === "\uFFFD\uFFFD\x02\uFFFD\x02\uFFFD") return decodeUtf8 = env.decodeUtf8LikeFirefox;
+    if (text === "\uFFFD\uFFFD\x02\uFFFD\x02\uFFFD\uFFFD") return decodeUtf8 = env.decodeUtf8LikeChrome;
     console.error(new Error("No match!"));
     return decodeUtf8 = env.decodeUtf8;
   });
@@ -156,6 +155,20 @@
   testSoftDecodeUtf8BytesToString([0xef,0xbf,0xbf]);
   testSoftDecodeUtf8BytesToString([0xef,0xbf,0xc0]);
   testSoftDecodeUtf8BytesToString([0xef,0xbf,0xff]);
+
+  // 0xed 0xa0-0xbf 0x00-0xff
+  testSoftDecodeUtf8BytesToString([0xed,0xa0,0x00]);
+  testSoftDecodeUtf8BytesToString([0xed,0xa0,0x7f]);
+  testSoftDecodeUtf8BytesToString([0xed,0xa0,0x80]);
+  testSoftDecodeUtf8BytesToString([0xed,0xa0,0xbf]);
+  testSoftDecodeUtf8BytesToString([0xed,0xa0,0xc0]);
+  testSoftDecodeUtf8BytesToString([0xed,0xa0,0xff]);
+  testSoftDecodeUtf8BytesToString([0xed,0xbf,0x00]);
+  testSoftDecodeUtf8BytesToString([0xed,0xbf,0x7f]);
+  testSoftDecodeUtf8BytesToString([0xed,0xbf,0x80]);
+  testSoftDecodeUtf8BytesToString([0xed,0xbf,0xbf]);
+  testSoftDecodeUtf8BytesToString([0xed,0xbf,0xc0]);
+  testSoftDecodeUtf8BytesToString([0xed,0xbf,0xff]);
 
   // 0xf0-0xf3 0x90-0xbf 0x00-0xff
   testSoftDecodeUtf8BytesToString([0xf0,0x90,0x00]);

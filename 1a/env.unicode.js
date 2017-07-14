@@ -270,20 +270,6 @@
     }
     return codePoints;
   };
-  env.decodeUtf8LikeChromeOs = function (bytes) {
-    var cont = true, ret = [], ee = [], e, cache = [], i = 0, ei = 0;
-    while (cont) {
-      cont = false;
-      env.decodeUtf8ChunkAlgorithm(bytes, i, bytes.length, ret, false, ee, cache, true);
-      if ((e = ee[ei++]) !== undefined) {
-        ret.push(0xFFFD);
-        cache.splice(0);
-        i = e.index - e.length + 2;
-        cont = i < bytes.length;
-      }
-    }
-    return ret;
-  };
   env.decodeUtf8LikeChrome = function (bytes) {
     var cont = true, ret = [], ee = [], e, cache = [], i = 0, ei = 0;
     while (cont) {
@@ -313,8 +299,11 @@
         // this works for many cases, not all.
 
         if (e.errno === 2) {  // invalid continuation byte
-          if (e.requiredUtf8CodeAmount === 3 && e.length === 3) {
-            ++i;
+          if (e.requiredUtf8CodeAmount === 3) {
+            if (e.length === 3) {
+              // here bytes[i] is already between 0x80 and 0xBF
+              if (bytes[i - 1] != 0xED || bytes[i] <= 0x8F) ++i;
+            }
           } else if (e.requiredUtf8CodeAmount === 4) {
             if (e.length === 3) {
               // here bytes[i] is already between 0x80 and 0xBF
@@ -322,7 +311,7 @@
                   (bytes[i - 1] !== 0xF4 || bytes[i] <= 0x8F))
                 ++i;
             } else if (e.length === 4) {
-              // here bytes[i] and [i + 1] is already between 0x80 and 0xBF
+              // here bytes[i] and [i + 1] are already between 0x80 and 0xBF
               if (bytes[i - 1] !== 0xF4 || bytes[i] <= 0x8F) i += 2;
             }
           }
@@ -333,6 +322,7 @@
     }
     return ret;
   };
+  env.decodeUtf8LikeChromeOs = env.decodeUtf8LikeChrome;
   env.decodeUtf8LikeFirefox = function (bytes) {
     var cont = true, ret = [], ee = [], e, cache = [], i = 0, ei = 0;
     while (cont) {
@@ -362,18 +352,25 @@
         // this works for many cases, not all.
 
         if (e.errno === 2) {  // invalid continuation byte
-          if (e.requiredUtf8CodeAmount === 3 && e.length === 3) {
-            ++i;
+          if (e.requiredUtf8CodeAmount === 3) {
+            if (e.length === 3) {
+              // here bytes[i] is already between 0x80 and 0xBF
+              if (bytes[i - 1] != 0xED || bytes[i] <= 0x8F) ++i;
+            }
           } else if (e.requiredUtf8CodeAmount === 4) {
             if (e.length === 3) {
               // here bytes[i] is already between 0x80 and 0xBF
-              if (bytes[i - 1] !== 0xF4 || bytes[i] <= 0x8F)
-                ++i;
-            } else if (e.length === 4) i += 2;
+              if (bytes[i - 1] !== 0xF4 || bytes[i] <= 0x8F) ++i;
+            } else if (e.length === 4) {
+              // here bytes[i] and [i + 1] are already between 0x80 and 0xBF
+              if (bytes[i - 1] !== 0xF4 || bytes[i] <= 0x8F) i += 2;
+            }
           }
-        } else if (e.errno === 4) {  // unexpected end of data
+        } else if (e.errno === 6) {  // unexpected end of data
           if (e.requiredUtf8CodeAmount === 3) ++i;
-          else if (e.requiredUtf8CodeAmount === 4) i += 2;
+          else if (e.requiredUtf8CodeAmount === 4) {
+            if (bytes[i - 1] !== 0xF4) i += 2;
+          }
         }
 
         cont = i < bytes.length;
@@ -381,7 +378,7 @@
     }
     return ret;
   };
-  env.decodeUtf8 = env.decodeUtf8LikeChromeOs;
+  env.decodeUtf8 = env.decodeUtf8LikeChrome;
   env.decodeUtf8ToString = function (bytes) {
     return env.encodeCodePointsToString(env.decodeUtf8(bytes));
   };
