@@ -34,6 +34,10 @@
   //
   //   env.decodeExtendedAsciiCodesToCodePointsChunkAlgorithm
   //   env.decodeExtendedAsciiCodesToCodePoints
+  //
+  //   env.decodeLatin1CodesToCodePointsChunkAlgorithm
+  //   env.decodeLatin1CodesToCodePoints
+  //   env.decodeLatin1CodesToString
 
   if (env.registerLib) env.registerLib(envUnicode);
 
@@ -458,6 +462,47 @@
       else codePoints[i] = code;
     }
     return codePoints;
+  };
+
+  env.decodeLatin1CodesToCodePointsChunkAlgorithm = function (latin1Codes, i, l, codePoints) {
+    // API stability level: 1 - Experimental
+
+    // XXX do documentation (latin-1 = iso-8859-1)
+
+    // latin1Codes = [...]
+    //   an array of latin-1 codes (uint8)
+    // i or from = 0
+    //   from which index to start reading latin1Codes
+    // l or to = latin1Codes.length
+    //   from which index to stop reading latin1Codes
+    // codePoints = []
+    //   where the code points (uint32) will be written
+    // returns codePoints
+
+    for (; i < l; i += 1) codePoints.push(latin1Codes[i]);
+    return codePoints;
+  };
+
+  env.decodeLatin1CodesToCodePoints = function (latin1Codes) {
+    // API stability level: 1 - Experimental
+    // XXX do documentation (latin-1 = iso-8859-1)
+    // latin1Codes = [...]
+    //   an array of latin-1 codes (uint8)
+    var i = 0, l = latin1Codes.length, codePoints = new Array(l);
+    for (; i < l; i += 1) codePoints[i] = latin1Codes[i];
+    return codePoints;
+  };
+
+  env.decodeLatin1CodesToString = function (latin1Codes) {
+    // API stability level: 1 - Experimental
+    // XXX do documentation (latin-1 = iso-8859-1)
+    // quicker than using `String.fromCodePoint.apply(String, codePoints)`
+    //   (and 32766 was the amount limit of argument for a function call).
+    // latin1Codes = [...]
+    //   an array of latin-1 codes (uint8)
+    var i = 0, l = latin1Codes.length, s = "";
+    for (; i < l; i += 1) s += String.fromCharCode(latin1Codes[i]);
+    return s;
   };
 
 }(this.env));
