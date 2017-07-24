@@ -406,7 +406,7 @@
   env.decodeExtendedAsciiCodesToCodePointsChunkAlgorithm = function (extendedAsciiCodes, i, l, codePoints, events) {
     // API stability level: 1 - Experimental
 
-    // XXX do documentation
+    // XXX do documentation (extended ascii = Windows-1252)
 
     // extendedAsciiCodes = [...]
     //   an array of us ascii codes (uint8)
@@ -434,7 +434,7 @@
     ];
     for (; i < l; i += 1) {
       if ((code = extendedAsciiCodes[i]) <= 0x7F) codePoints.push(code);
-      else if (errorScheme[code]) { events.push({type: "error", message: "invalid byte", errno: 1, index: i}); return events; }
+      else if (errorScheme[code]) { events.push({type: "error", message: "invalid byte", errno: 1, index: i}); return codePoints; }
       else if (code <= 0x9F) codePoints.push(scheme[code - 0x80]);
       else codePoints.push(code);
     }
@@ -443,7 +443,9 @@
 
   env.decodeExtendedAsciiCodesToCodePoints = function (extendedAsciiCodes) {
     // API stability level: 1 - Experimental
-    // XXX do documentation
+    // XXX do documentation (extended ascii = Windows-1252)
+    // extendedAsciiCodes = [...]
+    //   an array of us ascii codes (uint8)
     var i = 0, l = extendedAsciiCodes.length, codePoints = new Array(l), code, scheme = [
       0x20AC,0xFFFD,0x201A,0x0192,0x201E,0x2026,0x2020,0x2021, // 0x80-0x87
       0x02C6,0x2030,0x0160,0x2039,0x0152,0xFFFD,0x017D,0xFFFD, // 0x88-0x8F
