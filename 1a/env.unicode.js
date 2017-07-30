@@ -395,7 +395,7 @@
           if (e.requiredUtf8CodeAmount === 3) {
             if (e.length === 3) {
               // here bytes[i] is already between 0x80 and 0xBF
-              if (bytes[i - 1] != 0xED || bytes[i] <= 0x8F) ++i;
+              if (bytes[i - 1] != 0xED || bytes[i] <= 0x9F) ++i;
             }
           } else if (e.requiredUtf8CodeAmount === 4) {
             if (e.length === 3) {
@@ -449,7 +449,7 @@
           if (e.requiredUtf8CodeAmount === 3) {
             if (e.length === 3) {
               // here bytes[i] is already between 0x80 and 0xBF
-              if (bytes[i - 1] != 0xED || bytes[i] <= 0x8F) ++i;
+              if (bytes[i - 1] != 0xED || bytes[i] <= 0x9F) ++i;
             }
           } else if (e.requiredUtf8CodeAmount === 4) {
             if (e.length === 3) {
