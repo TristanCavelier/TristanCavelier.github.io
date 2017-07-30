@@ -49,6 +49,7 @@
 
   if (typeof String.fromCodePoint === "function") env.encodeCodePointToString = String.fromCodePoint;
   else env.encodeCodePointToString = function () {
+    // ..is a String.fromCodePoint polyfill
     var i = 0, l = arguments.length, code, codes = [];
     for (; i < l; i += 1) {
       code = arguments[i];
@@ -63,6 +64,7 @@
   };
 
   env.encodeCodePointsToString = function (codePoints) {
+    // XXX do documentation
     // quicker than using `String.fromCodePoint.apply(String, codePoints)`
     //   (and 32766 was the amount limit of argument for a function call).
     var i = 0, l = codePoints.length, code, s = "";
@@ -78,51 +80,91 @@
     return s;
   };
 
-  env.encodeCodePointsToUtf16ChunkAlgorithm = function (codePoints, utf16Codes, o) {
+  env.encodeCodePointsToUtf16ChunkAlgorithm = function (codePoints, i, l, utf16Codes, allowReservedCodePoints, events) {
+    // XXX do documentation
+
     // codePoints = [...]
     //   an array of code points (uint32)
+    // i (from) = 0
+    //   from which index to start reading codePoints
+    // l (to) = codePoints.length
+    //   from which index to stop reading codePoints
     // utf16Codes = []
-    //   where the utf16 codes (uint16) will be written
-    // o.reservedCodePointError({codePoints, utf16Codes, index}) - called if > U+D800 & < U+DFFF
-    // o.invalidCodePointError({codePoints, utf16Codes, index}) - called if > U+10FFFF
+    //   where the utf16 codes (uint16) are pushed
+    // allowReservedCodePoints = false
+    //   whether to ignore reserved code points or not
+    // events = []
+    //   where the error events are pushed
     // returns utf16Codes
 
-    var i = 0, l = codePoints.length, code;
+    // events :
+    //   error
+    //     reserved code point, errno 1 (if > U+D800 & < U+DFFF)
+    //     invalid code point, errno 2 (if > U+10FFFF)
+
+    var code;
     for (; i < l; i += 1) {
       code = codePoints[i];
       if (code <= 0xD7FF) utf16Codes.push(code);
-      else if (code <= 0xDFFF) o.reservedCodePointError({codePoints: codePoints, utf16Codes: utf16Codes, index: i});
+      else if (!allowReservedCodePoints && code <= 0xDFFF) { events.push({type: "error", message: "reserved code point", errno: 1, index: i}); return utf16Codes; }
       else if (code <= 0xFFFF) utf16Codes.push(code);
       else if (code <= 0x10FFFF) {  // surrogate pair
         code -= 0x10000;
         utf16Codes.push(0xD800 + ((code >>> 10) & 0x3FF), 0xDC00 + (code & 0x3FF));
-      } else o.invalidCodePointError({codePoints: codePoints, utf16Codes: utf16Codes, index: i});
+      } else { events.push({type: "error", message: "invalid code point", errno: 2, index: i}); return utf16Codes; }
     }
     return utf16Codes;
   };
   env.encodeCodePointsToUtf16 = function (codePoints) {
-    return env.encodeCodePointsToUtf16ChunkAlgorithm(codePoints, [], {
-      reservedCodePointError: function (o) { o.utf16Codes.push(o.codePoints[o.index]); },  // accept reserved code points (like in chrome)
-      invalidCodePointError: function (o) { o.utf16Codes.push(0xFFFD); }  // force encoding to work
-    });
-  };
+    // XXX do documentation
 
-  env.encodeCodePointsToUtf8ChunkAlgorithm = function (codePoints, utf8Codes, o) {
     // codePoints = [...]
     //   an array of code points (uint32)
+    // returns an array of utf16 codes (uint16)
+
+    var i = 0, l = codePoints.length, code, utf16Codes = [];
+    for (; i < l; i += 1) {
+      code = codePoints[i];
+      //if (code <= 0xD7FF) utf16Codes.push(code);
+      //else if (code <= 0xDFFF) accept reserved code points (like in chrome)
+      if (code <= 0xFFFF) utf16Codes.push(code);
+      else if (code <= 0x10FFFF) {  // surrogate pair
+        code -= 0x10000;
+        utf16Codes.push(0xD800 + ((code >>> 10) & 0x3FF), 0xDC00 + (code & 0x3FF));
+      } else utf16Codes.push(0xFFFD);  // push code point error
+    }
+    return utf16Codes;
+  };
+
+  env.encodeCodePointsToUtf8ChunkAlgorithm = function (codePoints, i, l, utf8Codes, allowReservedCodePoints, events) {
+    // XXX do documentation
+
+    // codePoints = [...]
+    //   an array of code points (uint32)
+    // i (from) = 0
+    //   from which index to start reading codePoints
+    // l (to) = codePoints.length
+    //   from which index to stop reading codePoints
     // utf8Codes = []
-    //   where the utf8 codes (uint8) will be written
-    // o.reservedCodePointError({codePoints, utf8Codes, index}) - called if > U+D800 & < U+DFFF
-    // o.invalidCodePointError({codePoints, utf8Codes, index}) - called if > U+10FFFF
+    //   where the utf8 codes (uint8) are pushed
+    // allowReservedCodePoints = false
+    //   whether to ignore reserved code points or not
+    // events = []
+    //   where the error events are pushed
     // returns utf8Codes
 
-    var i = 0, l = codePoints.length, code, b, c, d;
+    // events :
+    //   error
+    //     reserved code point, errno 1 (if > U+D800 & < U+DFFF)
+    //     invalid code point, errno 2 (if > U+10FFFF)
+
+    var code, b, c, d;
     for (; i < l; i += 1) {
       if ((code = codePoints[i]) <= 0x7F) utf8Codes.push(code);
       else if (code <= 0x7FF) {
         b = 0x80 | (code & 0x3F); code >>>= 6;
         utf8Codes.push(0xC0 | (code & 0x1F), b); // a = (0x1E << (6 - 1)) | (code & (0x3F >> 1));
-      } else if (0xD800 <= code && code <= 0xDFFF) o.reservedCodePointError({codePoints: codePoints, utf8Codes: utf8Codes, index: i});
+      } else if (!allowReservedCodePoints && 0xD800 <= code && code <= 0xDFFF) { events.push({type: "error", message: "reserved code point", errno: 1, index: i}); return utf8Codes; }
       else if (code <= 0xFFFF) {
         c = 0x80 | (code & 0x3F); code >>>= 6;
         b = 0x80 | (code & 0x3F); code >>>= 6;
@@ -132,36 +174,64 @@
         c = 0x80 | (code & 0x3F); code >>>= 6;
         b = 0x80 | (code & 0x3F); code >>>= 6;
         utf8Codes.push(0xF0 | (code & 0x7), b, c, d); // a = (0x1E << (6 - 3)) | (code & (0x3F >> 3));
-      } else o.invalidCodePointError({codePoints: codePoints, utf8Codes: utf8Codes, index: i});
+      } else { events.push({type: "error", message: "invalid code point", errno: 2, index: i}); return utf8Codes; }
     }
     return utf8Codes;
   };
   env.encodeCodePointsToUtf8 = function (codePoints) {
-    return env.encodeCodePointsToUtf8ChunkAlgorithm(codePoints, [], {
-      invalidCodePointError: function (o) { o.utf8Codes.push(0xEF, 0xBF, 0xBD); },  // push code point error
-      reservedCodePointError: function (o) {  // accept reserved code points (like in chrome).
-        var code = o.codePoints[o.index], c, b;
+    // XXX do documentation
+
+    // codePoints = [...]
+    //   an array of code points (uint32)
+    // returns an array of utf8 codes (uint8)
+
+    var i = 0, l = codePoints.length, code, b, c, d, utf8Codes = [];
+    for (; i < l; i += 1) {
+      if ((code = codePoints[i]) <= 0x7F) utf8Codes.push(code);
+      else if (code <= 0x7FF) {
+        b = 0x80 | (code & 0x3F); code >>>= 6;
+        utf8Codes.push(0xC0 | (code & 0x1F), b); // a = (0x1E << (6 - 1)) | (code & (0x3F >> 1));
+      // } else if (0xD800 <= code && code <= 0xDFFF) accept reserved code points (like in chrome)
+      } else if (code <= 0xFFFF) {
         c = 0x80 | (code & 0x3F); code >>>= 6;
         b = 0x80 | (code & 0x3F); code >>>= 6;
-        o.utf8Codes.push(0xE0 | (code & 0xF), b, c); // a = (0x1E << (6 - 2)) | (code & (0x3F >> 2));
-      }
-    });
+        utf8Codes.push(0xE0 | (code & 0xF), b, c); // a = (0x1E << (6 - 2)) | (code & (0x3F >> 2));
+      } else if (code <= 0x10FFFF) {
+        d = 0x80 | (code & 0x3F); code >>>= 6;
+        c = 0x80 | (code & 0x3F); code >>>= 6;
+        b = 0x80 | (code & 0x3F); code >>>= 6;
+        utf8Codes.push(0xF0 | (code & 0x7), b, c, d); // a = (0x1E << (6 - 3)) | (code & (0x3F >> 3));
+      } else utf8Codes.push(0xEF, 0xBF, 0xBD);  // push code point error
+    }
+    return utf8Codes;
   };
 
-  env.encodeUtf16ToUtf8ChunkAlgorithm = function (utf16Codes, utf8Codes, cache, o, close) {
+  env.encodeUtf16ToUtf8ChunkAlgorithm = function (utf16Codes, i, l, utf8Codes, events, cache, close) {
+    // XXX do documentation
+
     // utf16Codes = [...]
     //   an array of utf16 codes (uint16)
+    // i (from) = 0
+    //   from which index to start reading utf16Codes
+    // l (to) = utf16Codes.length
+    //   from which index to stop reading utf16Codes
     // utf8Codes = []
-    //   where the utf8 codes (uint8) will be written
+    //   where the utf8 codes (uint8) are pushed
+    // events = []
+    //   where the error events are pushed
     // cache = []
     //   used by the algorithm
-    // o.invalidStartCodeError({utf16Codes, utf8Codes, cache, index}) - called on invalid surrogate start
-    // o.unexpectedEndOfDataError({utf16Codes, utf8Codes, cache, index, requiredUtf16CodeAmount, requiredUtf16CodeIndex, lastUtf16Codes}) - called on incomplete surrogate pair
-    // o.invalidContinuationCodeError({utf16Codes, utf8Codes, cache, index, requiredUtf16CodeAmount, requiredUtf16CodeIndex, lastUtf16Codes}) - called on invalid surrogate pair
     // close = false (optional)
+    //   tells the algorithm to close the stream
     // returns utf8Codes
 
-    var i = 0, l = utf16Codes.length, c, c1;
+    // events :
+    //   error
+    //     invalid continuation code, errno 1
+    //     invalid start code, errno 2
+    //     unexpected end of data, errno 3
+
+    var c, c1;
     for (; i < l; i += 1) {
       c = utf16Codes[i];
       if (cache.length) {
@@ -170,59 +240,77 @@
           c1 = ((c1 - 0xd800) << 10) + (c - 0xdc00) + 0x10000;
           utf8Codes.push((c1 >> 18) | 0xf0, ((c1 >> 12) & 0x3f) | 0x80, ((c1 >> 6) & 0x3f) | 0x80, (c1 & 0x3f) | 0x80);
           cache.shift();
-        } else o.invalidContinuationCodeError({utf16Codes: utf16Codes, utf8Codes: utf8Codes, cache: cache, index: i, requiredUtf16CodeAmount: 2, requiredUtf16CodeIndex: 1, lastUtf16Codes: [cache[0], c]});
+        } else { events.push({type: "error", message: "invalid continuation code", errno: 1, index: i}); return utf8Codes; }
       } else if (c <= 0x7F) utf8Codes.push(c);
       else if (c <= 0x7FF) utf8Codes.push((c >> 6) | 0xc0, (c & 0x3f) | 0x80);
       else if (0xd800 <= c && c <= 0xdbff) cache[0] = c;
-      else if (0xdc00 <= c && c <= 0xdfff) o.invalidStartCodeError({utf16Codes: utf16Codes, utf8Codes: utf8Codes, cache: cache, index: i});
+      else if (0xdc00 <= c && c <= 0xdfff) { events.push({type: "error", message: "invalid start code", errno: 2, index: i}); return utf8Codes; }
       else utf8Codes.push(((c >> 12) & 0xf) | 0xe0, ((c >> 6) & 0x3f) | 0x80, (c & 0x3f) | 0x80);
     }
-    if (close && cache.length) o.unexpectedEndOfDataError({utf16Codes: utf16Codes, utf8Codes: utf8Codes, cache: cache, index: utf16Codes.length, requiredUtf16CodeAmount: 2, requiredUtf16CodeIndex: 1, lastUtf16Codes: [cache[0]]});
+    if (close && cache.length) { events.push({type: "error", message: "unexpected end of data", errno: 3, index: i}); return utf8Codes; }
     return utf8Codes;
   };
   env.encodeUtf16ToUtf8 = function (utf16Codes) {
-    function pushCodePointError(o) { o.utf8Codes.push(0xEF, 0xBF, 0xBD); o.cache.splice(0); }
-    function pushCodePointErrorAndDecodeMissedUtf16(o) {
-      o.utf8Codes.push(0xEF, 0xBF, 0xBD); o.cache.splice(0);
-      this.algo(o.lastUtf16Codes.slice(1), o.utf8Codes, o.cache, this, false);
+    // XXX do documentation
+
+    // utf16Codes = [...]
+    //   an array of utf16 codes (uint16)
+    // returns an array of utf8 codes (uint8)
+
+    var cont = true, e, ee = [], i = 0, ei = 0, cache = [], utf8Codes = [];
+    while (cont) {
+      cont = false;
+      env.encodeUtf16ToUtf8ChunkAlgorithm(utf16Codes, i, utf16Codes.length, utf8Codes, ee, cache, true);
+      if ((e = ee[ei++]) !== undefined) {
+        switch (e.errno) {
+          case 1:  // invalid continuation code
+            i = e.index;
+            utf8Codes.push(0xEF, 0xBF, 0xBD);
+            cache = [];
+            break;
+          case 2:  // invalid start code
+          case 3:  // unexpected end of data
+            i = e.index + 1;
+            utf8Codes.push(0xEF, 0xBF, 0xBD);
+            break;
+          default:
+            throw new Error("unhandled errno " + e.errno);
+        }
+        cont = i < utf16Codes.length;
+      }
     }
-    function pushCodePointErrorAndDecodeMissedUtf16AndClose(o) {
-      o.utf8Codes.push(0xEF, 0xBF, 0xBD); o.cache.splice(0);
-      this.algo([], o.utf8Codes, o.cache, this, true);
-    }
-    return env.encodeUtf16ToUtf8ChunkAlgorithm(utf16Codes, [], [], {
-      algo: env.encodeUtf16ToUtf8ChunkAlgorithm,
-      invalidStartCodeError: pushCodePointError,
-      invalidContinuationCodeError: pushCodePointErrorAndDecodeMissedUtf16,
-      unexpectedEndOfDataError: pushCodePointErrorAndDecodeMissedUtf16AndClose
-    }, true);
+    return utf8Codes;
   };
   env.encodeStringToUtf8 = function (text) {
+    // XXX do documentation
     var i = 0, l = text.length, utf16Codes = new Array(l);
     for (; i < l; i += 1) utf16Codes[i] = text.charCodeAt(i);
     return env.encodeUtf16ToUtf8(utf16Codes);
   };
 
   env.decodeUtf8ChunkAlgorithm = function (utf8Codes, i, l, codePoints, allowOverlongEncoding, events, cache, close) {
+    // XXX do documentation
+
     // utf8Codes = [...]
     //   an array of utf8 codes (uint8)
     // codePoints = []
-    //   where the code points (uint32) will be written
+    //   where the code points (uint32) are pushed
     // cache = []
     //   used by the algorithm
     // events = []
-    //   where the errors will be given
-    // close = false
+    //   where the error events are pushed
+    // close = false (optional)
+    //   tells the algorithm to close the stream
     // returns codePoints
 
     // events :
     //   error
-    //     invalid start byte 1
-    //     invalid continuation byte 2
-    //     overlong encoding 3
-    //     reserved code point 4
-    //     invalid code point 5
-    //     unexpected end of data 6
+    //     invalid start byte, errno 1
+    //     invalid continuation byte, errno 2
+    //     overlong encoding, errno 3
+    //     reserved code point, errno 4
+    //     invalid code point, errno 5
+    //     unexpected end of data, errno 6
 
     var code, c;
     for (; i < l; i += 1) {
@@ -275,6 +363,7 @@
     return codePoints;
   };
   env.decodeUtf8LikeChrome = function (bytes) {
+    // XXX do documentation
     var cont = true, ret = [], ee = [], e, cache = [], i = 0, ei = 0;
     while (cont) {
       cont = false;
@@ -328,6 +417,7 @@
   };
   env.decodeUtf8LikeChromeOs = env.decodeUtf8LikeChrome;
   env.decodeUtf8LikeFirefox = function (bytes) {
+    // XXX do documentation
     var cont = true, ret = [], ee = [], e, cache = [], i = 0, ei = 0;
     while (cont) {
       cont = false;
@@ -384,6 +474,7 @@
   };
   env.decodeUtf8 = env.decodeUtf8LikeChrome;
   env.decodeUtf8ToString = function (bytes) {
+    // XXX do documentation
     return env.encodeCodePointsToString(env.decodeUtf8(bytes));
   };
 
@@ -419,14 +510,14 @@
     // l or to = extendedAsciiCodes.length
     //   from which index to stop reading extendedAsciiCodes
     // codePoints = []
-    //   where the code points (uint32) will be written
+    //   where the code points (uint32) are pushed
     // events = []
-    //   XXX
+    //   where the error events are pushed
     // returns codePoints
 
     // events:
     //   error
-    //     invalid byte 1
+    //     invalid byte, errno 1
 
     var code, errorScheme = {  // externalize errorscheme ?
       129:1,141:1,143:1,144:1,157:1
@@ -450,6 +541,7 @@
     // XXX do documentation (extended ascii = Windows-1252)
     // extendedAsciiCodes = [...]
     //   an array of us ascii codes (uint8)
+    // returns an array of code points (uint32)
     var i = 0, l = extendedAsciiCodes.length, codePoints = new Array(l), code, scheme = [
       0x20AC,0xFFFD,0x201A,0x0192,0x201E,0x2026,0x2020,0x2021, // 0x80-0x87
       0x02C6,0x2030,0x0160,0x2039,0x0152,0xFFFD,0x017D,0xFFFD, // 0x88-0x8F
@@ -476,7 +568,7 @@
     // l or to = latin1Codes.length
     //   from which index to stop reading latin1Codes
     // codePoints = []
-    //   where the code points (uint32) will be written
+    //   where the code points (uint32) are pushed
     // returns codePoints
 
     for (; i < l; i += 1) codePoints.push(latin1Codes[i]);
@@ -488,6 +580,7 @@
     // XXX do documentation (latin-1 = iso-8859-1)
     // latin1Codes = [...]
     //   an array of latin-1 codes (uint8)
+    // returns an array of code points (uint32)
     var i = 0, l = latin1Codes.length, codePoints = new Array(l);
     for (; i < l; i += 1) codePoints[i] = latin1Codes[i];
     return codePoints;
@@ -500,6 +593,7 @@
     //   (and 32766 was the amount limit of argument for a function call).
     // latin1Codes = [...]
     //   an array of latin-1 codes (uint8)
+    // returns an array of code points (uint32)
     var i = 0, l = latin1Codes.length, s = "";
     for (; i < l; i += 1) s += String.fromCharCode(latin1Codes[i]);
     return s;

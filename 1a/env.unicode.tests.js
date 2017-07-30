@@ -21,13 +21,13 @@
         error("test `" + name + "`, result `" + JSON.stringify(res) + "` !== `" + JSON.stringify(expected) + "` expected");
       }
     }
-    timer = setTimeout(function () {
-      try { if (typeof end.onbeforetimeout === "function") end.onbeforetimeout(); }
-      catch (e) { error("test: " + name + ", error on before timeout ! `" + e + "`"); }
-      if (timer === undefined) return;  // it has ended in before timeout
-      error("test `" + name + "`, timeout ! result `" + JSON.stringify(res) + "` <-> `" + JSON.stringify(expected) + "` expected");
-    }, timeout);
     setTimeout(function () {
+      timer = setTimeout(function () {
+        try { if (typeof end.onbeforetimeout === "function") end.onbeforetimeout(); }
+        catch (e) { error("test: " + name + ", error on before timeout ! `" + e + "`"); }
+        if (timer === undefined) return;  // it has ended in before timeout
+        error("test `" + name + "`, timeout ! result `" + JSON.stringify(res) + "` <-> `" + JSON.stringify(expected) + "` expected");
+      }, timeout);
       try { testFn(res, end); }
       catch (e) { error("test `" + name + "`, error ! result `" + e + "`"); }
     });
@@ -60,6 +60,21 @@
   function randBytes(length) {
     var r = [], i = 0;
     while (i++ < length) r.push(parseInt(Math.random() * 256, 10));
+    return r;
+  }
+  function randPoints(length) {
+    var r = [], i = 0;
+    while (i++ < length) r.push(parseInt(Math.random() * 0x110000, 10));
+    return r;
+  }
+  function randReservedPoints(length) {
+    var r = [], i = 0;
+    while (i++ < length) r.push(parseInt(Math.random() * 0x200, 10) + 0xD800);
+    return r;
+  }
+  function randInt32Array(length) {
+    var r = [], i = 0;
+    while (i++ < length) r.push(parseInt(Math.random() * 0x100000000, 10));
     return r;
   }
   function randText(length) {
@@ -103,11 +118,30 @@
       });
     });
   }
-  function testFromCodePoint(point) {
+  function testStringFromCodePoint(point) {
     var r;
     try { r = String.fromCodePoint(point); } catch (e) { r = e.message; }
-    test("unicode point 0x" + (point).toString(16), 300, [r], function (res, end) {
+    test("unicode 0x" + (point).toString(16), 300, [r], function (res, end) {
       try { res.push(env.encodeCodePointToString(point)); } catch (e) { res.push(e.message); }
+      end();
+    });
+  }
+  function testStringFromCodePoints(points) {
+    var r;
+    try { r = String.fromCodePoint.apply(String, points); } catch (e) { r = e.message; }
+    test("unicode " + bytesToJs(points), 300, [r], function (res, end) {
+      try { res.push(env.encodeCodePointsToString(points)); } catch (e) { res.push(e.message); }
+      end();
+    });
+  }
+  function testEncodeCodePointsToUtf16(points) {
+    var r;
+    try {
+      r = String.fromCodePoint.apply(String, points.map(function (p) { return p <= 0x10FFFF ? p : 0xFFFD; }));
+      r = [].map.call(r, function (_, i) { return r.charCodeAt(i); });
+    } catch (e) { r = e.message; }
+    test("unicode " + bytesToJs(points), 300, [r], function (res, end) {
+      try { res.push(env.encodeCodePointsToUtf16(points)); } catch (e) { res.push(e.message); }
       end();
     });
   }
@@ -241,24 +275,35 @@
   ));
   testSoftEncodeStringToUtf8Bytes(randText(Math.random() * 100));
 
-  //testFromCodePoint(0x00);
-  //testFromCodePoint(0x20);
-  //testFromCodePoint(0x7F);
-  //testFromCodePoint(0x80);
-  //testFromCodePoint(0x7FF);
-  //testFromCodePoint(0x800);
-  //testFromCodePoint(0xD7FF);
-  //testFromCodePoint(0xD800);
-  //testFromCodePoint(0xDFFF);
-  //testFromCodePoint(0xE000);
-  //testFromCodePoint(0xFEFF);
-  //testFromCodePoint(0xFFFE);
-  //testFromCodePoint(0xFFFF);
-  //testFromCodePoint(0x10000);
-  //testFromCodePoint(0x10FFFF);
-  //testFromCodePoint(0x110000);
-  //testFromCodePoint(0x1FFFFF);
-  //testFromCodePoint(0xFFFFFF);
-  //testFromCodePoint(parseInt(Math.random() * 0x1000000, 10));
+  // Commented out because env.encodeCodePointToString can use native method
+  //testStringFromCodePoint(0x00);
+  //testStringFromCodePoint(0x20);
+  //testStringFromCodePoint(0x7F);
+  //testStringFromCodePoint(0x80);
+  //testStringFromCodePoint(0x7FF);
+  //testStringFromCodePoint(0x800);
+  //testStringFromCodePoint(0xD7FF);
+  //testStringFromCodePoint(0xD800);
+  //testStringFromCodePoint(0xDFFF);
+  //testStringFromCodePoint(0xE000);
+  //testStringFromCodePoint(0xFEFF);
+  //testStringFromCodePoint(0xFFFE);
+  //testStringFromCodePoint(0xFFFF);
+  //testStringFromCodePoint(0x10000);
+  //testStringFromCodePoint(0x10FFFF);
+  //testStringFromCodePoint(0x110000);
+  //testStringFromCodePoint(0x1FFFFF);
+  //testStringFromCodePoint(0xFFFFFF);
+  //testStringFromCodePoint(parseInt(Math.random() * 0x1000000, 10));
+
+  testStringFromCodePoints(randPoints(Math.random() * 20));
+  testStringFromCodePoints(randReservedPoints(Math.random() * 20));
+  testStringFromCodePoints(randInt32Array(Math.random() * 20));
+
+  testEncodeCodePointsToUtf16(randPoints(Math.random() * 20));
+  testEncodeCodePointsToUtf16(randReservedPoints(Math.random() * 20));
+  testEncodeCodePointsToUtf16(randInt32Array(Math.random() * 20));
+
+  // XXX how to test encodeCodePointsToUtf8 ?
 
 }(this.env));
