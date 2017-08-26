@@ -1,4 +1,73 @@
 /*jslint indent: 2 */
+(function envBookmarks(env) {
+  "use strict";
+
+  /*! Copyright (c) 2017 Tristan Cavelier <t.cavelier@free.fr>
+      This program is free software. It comes without any warranty, to
+      the extent permitted by applicable law. You can redistribute it
+      and/or modify it under the terms of the Do What The Fuck You Want
+      To Public License, Version 2, as published by Sam Hocevar. See
+      http://www.wtfpl.net/ for more details. */
+
+  function exportBookmarks(title, nodes) {
+    // a node is an object with "type"
+    // "type" can be "folder" or "bookmark"
+    // if "type":"folder", object should have "title", "nodes" (may have "addDate" and "lastModified" and "personalToolbarFolder")
+    // if "type":"bookmark", object should have "href", "textContent" (may have "icon", "addDate")
+    var html = "";
+    html += '<!DOCTYPE NETSCAPE-Bookmark-file-1>\n';
+    html += "<!-- This is an automatically generated file.\n";
+    html += "     It will be read and overwritten.\n";
+    html += "     DO NOT EDIT! -->\n";
+    html += '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n';
+    html += "<TITLE>" + escapeHtml(title) + "</TITLE>\n";
+    html += "<H1>" + escapeHtml(title) + "</H1>\n";
+    html += "<DL><p>\n";
+    function rec(nodes, depth) {
+      var i = 0, html = "", spaces = "    ".repeat(depth);
+      for (; i < nodes.length; i += 1) {
+        if (nodes[i].type === "folder") {
+          html += spaces + "<DT><H3";
+          if (nodes[i].addDate) html += ' ADD_DATE="' + escapeHtml("" + nodes[i].addDate) + '"';
+          if (nodes[i].lastModified) html += ' LAST_MODIFIED="' + escapeHtml("" + nodes[i].lastModified) + '"';
+          if (nodes[i].personalToolbarFolder) html += ' PERSONAL_TOOLBAR_FOLDER="' + escapeHtml("" + nodes[i].personalToolbarFolder) + '"';
+          html += ">" + escapeHtml("" + nodes[i].title) + "</H3>\n";
+          html += spaces + "<DL><p>\n";
+          html += rec(nodes[i].nodes, depth + 1);
+          html += spaces + "</DL><p>\n";
+        } else {
+          html += spaces + '<DT><A HREF="' + escapeHtml("" + nodes[i].href) + '"';
+          if (nodes[i].addDate) html += ' ADD_DATE="' + escapeHtml("" + nodes[i].addDate) + '"';
+          if (nodes[i].icon) html += ' ICON="' + escapeHtml("" + nodes[i].icon) + '"';
+          html += ">" + escapeHtml("" + nodes[i].textContent) + "</A>\n";
+        }
+      }
+      return html;
+    }
+    html += rec(nodes, 1);
+    html += "</DL><p>\n";
+    return html;
+  }
+  exportBookmarks("Bookmarks", [{
+    type: "folder",
+    title: "Bookmarks bar",
+    addDate: 1503736752,
+    lastModified: 1503762077,
+    personalToolbarFolder: true,
+    nodes: [{
+      type: "bookmark",
+      href: "http://example.com",
+      addDate: 1503762099,
+      textContent: "example"
+    }]
+  }, {
+    type: "bookmark",
+    href: "https://github.com/TristanCavelier/TristanCavelier.github.io",
+    addDate: 1503761765,
+    textContent: "GitHub - TristanCavelier/TristanCavelier.github.io"
+  }]);
+
+}(this.env));
 (function envHtml(env) {
   "use strict";
 
